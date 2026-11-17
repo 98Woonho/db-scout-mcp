@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MCP STDIO 서버는 표준출력(stdout)으로 MCP 메시지를 주고받는다.
+  로그가 표준출력에 섞이면 클라이언트가 메시지를 읽지 못하므로, 모든 로그를 표준에러(stderr)로 보낸다.
+-->
+<configuration>
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [db-scout] %logger{0} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="io.github._98woonho.dbscout" level="INFO"/>
+    <!-- Spring AI MCP 어노테이션 스캐너가 시작할 때 내는 무해한 경고(BeanPostProcessorChecker)를 숨긴다 -->
+    <logger name="org.springframework.context.support.PostProcessorRegistrationDelegate" level="ERROR"/>
+
+    <root level="WARN">
+        <appender-ref ref="STDERR"/>
+    </root>
+</configuration>

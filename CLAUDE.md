@@ -30,9 +30,17 @@ AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으�
 - README, 커밋 메시지, Skill 문서, 도구 설명(사용자에게 보이는 부분)도 한국어로 쓴다. 코드 식별자는 영어.
 
 ## 기술 스택
-- Java 21, Spring Boot, Spring AI MCP Server(STDIO), Gradle Wrapper(`gradlew.bat`)
-- SQL 분석: JSqlParser / 테스트: JUnit 5, AssertJ
-- DB: 개발·테스트·데모는 파일형 DB(SQLite) + Sakila 샘플. MySQL·PostgreSQL은 JDBC 드라이버로 지원.
+- Java 21, Spring Boot 4.1.2, Spring AI 2.0.2(MCP Server, STDIO), Gradle Wrapper 9.9.1(`gradlew.bat`)
+- MCP 도구는 `@McpTool`(`org.springframework.ai.mcp.annotation`)로 만든다. 모든 도구에 `readOnlyHint = true`.
+- SQL 분석: JSqlParser 5.4 / 테스트: JUnit 5, AssertJ, MCP Java SDK 클라이언트(실제 jar를 STDIO로 실행)
+- DB: 개발·테스트·데모는 SQLite + Sakila 샘플. MySQL·PostgreSQL은 JDBC 드라이버로 지원.
+- 패키지: `io.github._98woonho.dbscout` (GitHub 이름이 숫자로 시작해 Java 규칙대로 앞에 `_`를 붙임)
+- Sakila는 저장소에 넣지 않는다. 빌드 때 jOOQ/sakila 고정 커밋에서 받아 SHA-256으로 확인한 뒤 `sakila.db`로 만들어 jar에 넣는다(`build.gradle.kts`의 `buildSakilaDb`). 출처 고지는 `THIRD_PARTY_NOTICES.md`.
+
+## 결정 사항
+- 파일형 DB는 SQLite. (2026-11-17)
+- 민감 컬럼을 WHERE·ORDER BY·GROUP BY에 쓰는 것은 막지 않는다. 마스킹의 목적은 개인정보가 Claude의 대화로 흘러 들어가지 않게 하는 것이고, 결과로 나가는 값은 원래 컬럼을 추적해 가린다. 이 한계는 README에 적는다. (2026-11-17)
+- 도구 9개 + Skill 2개(`db-explore`, `data-question`)로 시작한다. (2026-11-17)
 
 ## 개발 환경 (이 PC)
 - JDK 21 설치됨(`C:\Program Files\Java\jdk-21.0.1`), Node.js 있음.

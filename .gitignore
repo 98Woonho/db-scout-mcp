@@ -1,0 +1,22 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+out/
+bin/
+!plugin/bin/
+
+# 로컬 설정·비밀
+.env
+.env.*
+!.env.example
+application-local.yml
+*.log
+
+# claude plugin eval 실행 결과
+plugin/evals/results/
