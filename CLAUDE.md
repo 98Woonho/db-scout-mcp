@@ -53,6 +53,8 @@ AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으�
 - jOOQ판 Sakila(SQLite)의 `address.phone`은 603개 모두 공백 한 칸이다. 전화번호 가리기 테스트는 값을 직접 만들어 확인한다.
 - jOOQ판 Sakila(SQLite)에는 `actor_info` 뷰가 없다(MySQL 전용 문법이라 주석 처리됨). 테이블 16개 + 뷰 5개.
 - Sakila 정답 예: 카테고리별 영화 수 1위 Sports 74편, film.rating 최빈값 PG-13 223편, 결제 16,049건.
+- `claude plugin eval`의 정규식은 JavaScript 문법이다. `(?i)` 인라인 플래그를 쓰면 채점기가 오류를 낸다(regex 채점은 `flags: i`, input_match는 `[Ss][Uu][Mm]`). PluginFilesTest가 막는다.
+- 평가 1차(2026-11-17, v0.1.0, 문제당 1회): Skill 있음 $1.13 / 없음 $0.84. Skill 있음 실행은 `(?i)` 채점기 7개가 오류라 23개 항목만 유효(23/23). 같은 23개에서 Skill 없음 19/23(AI 채점 1건 사람이 바로잡음: overview 04 무리 짓기는 실제로 했음). 차이는 find_join_path 확인, SQL 공개, describe_table로 구조 확인, ER 다이어그램. 안전 항목(가리기·쓰기 차단·덤프)은 서버가 강제해 Skill 유무와 무관하게 통과. Sakila는 유명한 공개 DB라 Skill 없이도 Claude가 구조를 미리 알고 있다는 점이 한계.
 
 ## 개발 환경 (이 PC)
 - JDK 21 설치됨(`C:\Program Files\Java\jdk-21.0.1`), Node.js 있음.

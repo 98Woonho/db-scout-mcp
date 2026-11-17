@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Skill 평가(claude plugin eval)를 실행한다. 실제 Claude가 돌아가므로 비용이 든다.
 
@@ -39,12 +39,15 @@ $prefix = 'mcp__plugin_db-scout_db-scout__'
 $tools = 'list_connections', 'list_tables', 'describe_table', 'search_schema', 'find_join_path',
          'sample_rows', 'profile_column', 'explain_query', 'run_query' | ForEach-Object { $prefix + $_ }
 
+# Windows PowerShell 5.1은 외부 프로그램이 표준에러에 쓴 안내 문구도 오류로 취급한다. 여기부터는 종료 코드로만 판단한다.
+$ErrorActionPreference = 'Continue'
 $claude = if ($env:CLAUDE_BIN) { $env:CLAUDE_BIN } else { 'claude' }
 # --ablation none: '플러그인 전체 없음' 비교는 하지 않는다(Skill 효과는 -NoSkills 로 따로 비교)
 # --no-publish: 보고서를 claude.ai 에 올리지 않고 로컬(plugin/evals/results/)에만 둔다
 # --trust-plugin: 이 저장소에서 직접 만든 플러그인이므로 첫 실행 확인 창을 건너뛴다
+# --keep-temp: 실행 기록(trace.jsonl, 도구 호출 인자 포함)을 남겨 채점 결과를 사람이 다시 대조할 수 있게 한다
 $evalArgs = @('plugin', 'eval', $target, '--runs', '1', '--ablation', 'none', '--allow-real-servers',
-              '--no-publish', '--trust-plugin', '--max-cost-usd', '3', '--allow-tools') + $tools + $Rest
+              '--no-publish', '--trust-plugin', '--keep-temp', '--max-cost-usd', '3', '--allow-tools') + $tools + $Rest
 Write-Host "> $claude plugin eval $target ... (도구 $($tools.Count)개 허용, 문제당 1회, 상한 `$3)"
 & $claude @evalArgs
 exit $LASTEXITCODE

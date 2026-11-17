@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: mcp__plugin_db-scout_db-scout__run_query
-input_match: '(?i)sum\s*\([\s\S]*group\s+by'
+input_match: '[Ss][Uu][Mm]\s*\([\s\S]*[Gg][Rr][Oo][Uu][Pp]\s+[Bb][Yy]'
 ---

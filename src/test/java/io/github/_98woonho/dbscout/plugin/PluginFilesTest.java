@@ -143,11 +143,11 @@ class PluginFilesTest {
                 case "llm" -> assertThat(body(file).length() + String.valueOf(g.get("criteria")).length()).isGreaterThan(30);
                 case "regex" -> {
                     assertThat(g.get("match")).isIn("contains", "not_contains");
-                    Pattern.compile((String) g.get("pattern"));
+                    assertJavaScriptCompatible((String) g.get("pattern"));
                 }
                 case "tool_used" -> {
                     assertServerToolOrBuiltin((String) g.get("tool"));
-                    if (g.get("input_match") != null) Pattern.compile((String) g.get("input_match"));
+                    if (g.get("input_match") != null) assertJavaScriptCompatible((String) g.get("input_match"));
                 }
                 case "tool_order" -> {
                     assertServerToolOrBuiltin((String) g.get("before"));
@@ -156,6 +156,17 @@ class PluginFilesTest {
                 default -> { }
             }
         }
+    }
+
+    /**
+     * 평가 도구는 JavaScript 정규식을 쓴다. Java는 받지만 JavaScript는 못 받는 문법을 막는다.
+     * 특히 (?i) 같은 인라인 플래그: 대소문자 무시는 regex 채점의 flags: i 나 [Ss][Uu][Mm] 처럼 쓴다.
+     */
+    private static void assertJavaScriptCompatible(String regex) {
+        Pattern.compile(regex);
+        assertThat(regex).as("JavaScript 정규식은 (?i) 같은 인라인 플래그를 지원하지 않습니다")
+                .doesNotContainPattern("\\(\\?[imsxuU-]+[):]");
+        assertThat(regex).as("JavaScript 정규식에 없는 문법").doesNotContain("\\A", "\\Z", "\\z", "*+", "++");
     }
 
     private void assertServerToolOrBuiltin(String tool) {
