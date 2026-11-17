@@ -15,7 +15,6 @@ plugins {
 }
 
 group = "io.github.98woonho"
-version = "0.1.0"
 
 java {
     toolchain {

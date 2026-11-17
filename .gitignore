@@ -20,3 +20,6 @@ application-local.yml
 
 # claude plugin eval 실행 결과
 plugin/evals/results/
+
+# Skill 효과 비교용 복사본(scripts/eval.ps1 -NoSkills)
+plugin-noskills/

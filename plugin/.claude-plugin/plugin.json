@@ -1,0 +1,51 @@
+{
+  "name": "db-scout",
+  "displayName": "DB Scout",
+  "version": "0.1.0",
+  "description": "데이터베이스 구조 파악과 읽기 전용 조회 MCP 서버 + Skill: DB 구조 설명(db-explore), 데이터 질문에 SQL로 답하기(data-question). 쓰기 차단·행 수/시간 제한·개인정보 가리기. 설정 없이 쓰면 내장 샘플 DB(Sakila)로 동작합니다.",
+  "author": {
+    "name": "98Woonho",
+    "url": "https://github.com/98Woonho"
+  },
+  "homepage": "https://github.com/98Woonho/db-scout-mcp#readme",
+  "repository": "https://github.com/98Woonho/db-scout-mcp",
+  "license": "MIT",
+  "keywords": ["mcp", "database", "sql", "read-only", "mysql", "postgresql", "sqlite"],
+  "userConfig": {
+    "db_url": {
+      "type": "string",
+      "title": "DB 접속 URL (JDBC)",
+      "description": "예: jdbc:postgresql://localhost:5432/shop, jdbc:mysql://localhost:3306/shop, jdbc:sqlite:C:/data/app.db. 비워 두면 내장 샘플 DB(Sakila)로 실행합니다. 가능하면 읽기 권한만 있는 계정을 쓰세요.",
+      "required": false,
+      "sensitive": true
+    },
+    "db_username": {
+      "type": "string",
+      "title": "DB 계정",
+      "description": "SQLite는 비워 둡니다.",
+      "required": false,
+      "sensitive": false
+    },
+    "db_password": {
+      "type": "string",
+      "title": "DB 비밀번호",
+      "description": "OS 보안 저장소에 보관됩니다.",
+      "required": false,
+      "sensitive": true
+    },
+    "mask_columns": {
+      "type": "string",
+      "title": "추가로 가릴 컬럼 (선택)",
+      "description": "기본 규칙(email, phone, password, address 등) 외에 가릴 컬럼. 쉼표로 구분. 예: member.name, member.nickname=secret",
+      "required": false,
+      "sensitive": false
+    },
+    "hidden_tables": {
+      "type": "string",
+      "title": "숨길 테이블 (선택)",
+      "description": "도구에 보이지 않고 조회도 막을 테이블. 쉼표로 구분. 예: audit_log, hr.salary",
+      "required": false,
+      "sensitive": false
+    }
+  }
+}

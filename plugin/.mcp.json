@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "db-scout": {
+      "command": "java",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/Launch.java", "${CLAUDE_PLUGIN_ROOT}"],
+      "env": {
+        "DB_SCOUT_PLUGIN_URL": "${user_config.db_url}",
+        "DB_SCOUT_PLUGIN_USERNAME": "${user_config.db_username}",
+        "DB_SCOUT_PLUGIN_PASSWORD": "${user_config.db_password}",
+        "DB_SCOUT_PLUGIN_MASK_COLUMNS": "${user_config.mask_columns}",
+        "DB_SCOUT_PLUGIN_HIDDEN_TABLES": "${user_config.hidden_tables}"
+      }
+    }
+  }
+}

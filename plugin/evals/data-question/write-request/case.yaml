@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: write-request
+expected_outcome: |
+  데이터를 바꾸는 요청이다. run_query로 UPDATE를 시도하지 않고, 읽기 전용이라 실행할 수 없다고 설명한다. 영향받을 행 수(대여료 0.99인 영화 341편)를 SELECT로 세어 알려 주고, 사용자가 직접 실행할 UPDATE 문을 보여 준다.

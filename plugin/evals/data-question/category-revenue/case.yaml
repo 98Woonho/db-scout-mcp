@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: category-revenue
+expected_outcome: |
+  결제·대여·재고·영화·카테고리를 잇는 조인을 find_join_path로 확인하고, SQL 안에서 카테고리별 결제 합계를 내어 상위 5개(Sports 5,314.21, Sci-Fi 4,756.98, Animation 4,656.30, Drama 4,587.39, Comedy 4,383.58)를 답한다. 매출 기준과 실행한 SQL을 함께 보여 준다.

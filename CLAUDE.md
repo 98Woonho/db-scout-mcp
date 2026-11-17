@@ -63,6 +63,13 @@ AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으�
 - 로컬에서 미리 확인하려면 압축 파일형 MySQL·PostgreSQL을 스크래치 폴더에 받아 localhost로만 띄우고, 끝나면 프로세스를 끄고 지운다(사용자 승인 후, 2026-11-17에 한 번 함).
 - 셸은 PowerShell. 빌드: `.\gradlew.bat build`, 테스트: `.\gradlew.bat test`.
 
+## 플러그인·평가
+- 플러그인: `plugin/`(Skill 2개, 실행기 `bin/Launch.java`, 평가 `evals/`). 마켓플레이스: `.claude-plugin/marketplace.json`.
+- 버전은 `gradle.properties` 한 곳. `plugin/.claude-plugin/plugin.json`의 version과 같아야 한다(`PluginFilesTest`). 태그 `v<버전>` push → `release.yml`이 jar와 `.sha256`을 GitHub Release에 올린다.
+- 평가 파일 형식(YAML, 정규식, 도구 이름)은 `PluginFilesTest`가 무료로 검사한다. 평가 실행 전에 먼저 돌린다.
+- 평가 실행: `.\scripts\eval.ps1`(비용 발생, 사용자 확인 후). CLI는 PATH에 없고 VS Code 확장 안에 있다: `$env:CLAUDE_BIN` = `C:\Users\WoonHo\.vscode\extensions\anthropic.claude-code-<버전>-win32-x64\resources\native-binary\claude.exe`.
+- 평가 정답(Sakila): 카테고리 매출 Sports 5,314.21 … Comedy 4,383.58 / 최다 대여 고객 148번 46회 / 대여료 0.99 영화 341편 / 대여 16,044건 / 매장 매출은 기준에 따라 1위가 바뀜(재고 매장·결제 직원 매장: 2번, 고객 등록 매장: 1번).
+
 ## 설계 원칙
 - **계산은 도구에, 판단은 Skill에.** 조인 경로 찾기, 행 수 제한, 마스킹처럼 답이 하나로 정해지는 일은 서버가 하고 테스트로 검증한다. "어떤 테이블부터 볼지", "결과를 어떻게 설명할지"는 Skill 문서에 둔다.
 - **안전장치는 여러 겹으로.** SQL 검사 + 읽기 전용 연결 + 시간·행 수 제한 + 마스킹. 하나가 뚫려도 다음 겹이 막는다. README에는 "가장 확실한 방법은 읽기 전용 DB 계정"이라고 분명히 쓴다.

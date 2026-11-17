@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: overview
+expected_outcome: |
+  DB 전체를 행 수와 함께 훑은 뒤 핵심 테이블만 자세히 보고, DVD 대여점이라는 업무 흐름(영화 재고 → 대여 → 결제, 고객)으로 묶어 설명한다. 관계도(mermaid erDiagram)를 그린다.
