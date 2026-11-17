@@ -3,6 +3,8 @@
 AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으로 안전하게** 조회하는 MCP 서버와 Claude Skill.
 이전 프로젝트 korea-transit-mcp(`C:\Users\WoonHo\Desktop\mcp`)의 구조(plugin/, showcase/, 평가 방식)를 이어받는다.
 
+**지금 어디까지 했고 무엇이 남았는지는 [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md)에 있다. 새 대화를 시작하면 먼저 읽는다.**
+
 ## 작업 방식 (반드시 지킨다)
 
 ### git · 버전
