@@ -34,7 +34,7 @@ dependencies {
     implementation("org.springframework.ai:spring-ai-starter-mcp-server")
     implementation("com.github.jsqlparser:jsqlparser:5.4")
 
-    runtimeOnly("org.xerial:sqlite-jdbc:3.54.1.0")
+    implementation("org.xerial:sqlite-jdbc:3.54.1.0") // 읽기 전용 설정(SQLiteConfig)에 직접 쓴다
     runtimeOnly("com.mysql:mysql-connector-j:26.10.0")
     runtimeOnly("org.postgresql:postgresql:42.7.14")
 

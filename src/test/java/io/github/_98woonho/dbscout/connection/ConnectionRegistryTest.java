@@ -22,7 +22,7 @@ class ConnectionRegistryTest {
     @Test
     void usesDemoWhenNothingConfigured() {
         // application.yml 의 환경변수 자리는 URL이 비어 있으면 '설정 안 됨'으로 본다
-        var r = registry(new ConnectionConfig("main", "", "", "", ""));
+        var r = registry(ConnectionConfig.of("main", "", "", "", ""));
 
         assertThat(r.list()).singleElement().satisfies(e -> {
             assertThat(e.name()).isEqualTo("sakila");
@@ -35,8 +35,8 @@ class ConnectionRegistryTest {
     @Test
     void configuredConnectionsReplaceDemo() {
         var r = registry(
-                new ConnectionConfig("shop", "jdbc:postgresql://localhost/shop", "reader", "secret", "쇼핑몰"),
-                new ConnectionConfig(null, "jdbc:mysql://localhost/erp", "reader", "secret", null));
+                ConnectionConfig.of("shop", "jdbc:postgresql://localhost/shop", "reader", "secret", "쇼핑몰"),
+                ConnectionConfig.of(null, "jdbc:mysql://localhost/erp", "reader", "secret", null));
 
         assertThat(r.list()).extracting(ConnectionRegistry.Entry::name).containsExactly("shop", "db2");
         assertThat(r.list()).noneMatch(ConnectionRegistry.Entry::demo);
@@ -46,7 +46,7 @@ class ConnectionRegistryTest {
 
     @Test
     void unknownNameListsAvailableNames() {
-        var r = registry(new ConnectionConfig("shop", "jdbc:postgresql://localhost/shop", null, null, null));
+        var r = registry(ConnectionConfig.of("shop", "jdbc:postgresql://localhost/shop", null, null, null));
 
         assertThatThrownBy(() -> r.get("nope"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -55,7 +55,7 @@ class ConnectionRegistryTest {
 
     @Test
     void rejectsUnsupportedDatabase() {
-        assertThatThrownBy(() -> registry(new ConnectionConfig("x", "jdbc:oracle:thin:@host:1521:x", null, null, null)))
+        assertThatThrownBy(() -> registry(ConnectionConfig.of("x", "jdbc:oracle:thin:@host:1521:x", null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("지원하지 않는");
     }
@@ -63,14 +63,14 @@ class ConnectionRegistryTest {
     @Test
     void rejectsDuplicateNames() {
         assertThatThrownBy(() -> registry(
-                new ConnectionConfig("a", "jdbc:sqlite:a.db", null, null, null),
-                new ConnectionConfig("a", "jdbc:sqlite:b.db", null, null, null)))
+                ConnectionConfig.of("a", "jdbc:sqlite:a.db", null, null, null),
+                ConnectionConfig.of("a", "jdbc:sqlite:b.db", null, null, null)))
                 .hasMessageContaining("같은 이름");
     }
 
     @Test
     void secretsNeverAppearInToString() {
-        var config = new ConnectionConfig("shop", "jdbc:postgresql://db.internal/shop", "reader", "s3cr3t", null);
+        var config = ConnectionConfig.of("shop", "jdbc:postgresql://db.internal/shop", "reader", "s3cr3t", null);
         var entry = registry(config).get("shop");
 
         assertThat(config.toString()).doesNotContain("s3cr3t", "db.internal");

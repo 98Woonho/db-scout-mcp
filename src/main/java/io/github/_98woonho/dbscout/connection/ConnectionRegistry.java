@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import io.github._98woonho.dbscout.config.DbScoutProperties;
 import io.github._98woonho.dbscout.config.DbScoutProperties.ConnectionConfig;
+import io.github._98woonho.dbscout.mask.MaskPolicy;
 
 /**
  * 이름 붙은 DB 접속 목록.
@@ -24,7 +25,7 @@ public class ConnectionRegistry {
 
     /** 등록된 접속 하나. 비밀번호는 여기서만 들고 있고 밖으로 내보내지 않는다. */
     public record Entry(String name, DbKind kind, String description, boolean demo,
-                        String url, String username, String password) {
+                        String url, String username, String password, MaskPolicy maskPolicy) {
 
         @Override
         public String toString() {
@@ -39,14 +40,16 @@ public class ConnectionRegistry {
         this(properties, SakilaDemo::jdbcUrl);
     }
 
-    ConnectionRegistry(DbScoutProperties properties, Supplier<String> demoUrl) {
+    /** 데모 DB 경로를 바꿀 수 있는 생성자(테스트용). */
+    public ConnectionRegistry(DbScoutProperties properties, Supplier<String> demoUrl) {
         List<ConnectionConfig> configured = properties.connections().stream()
                 .filter(ConnectionConfig::isConfigured)
                 .toList();
         Map<String, Entry> map = new LinkedHashMap<>();
         if (configured.isEmpty()) {
             map.put(SakilaDemo.CONNECTION_NAME, new Entry(SakilaDemo.CONNECTION_NAME, DbKind.SQLITE,
-                    SakilaDemo.DESCRIPTION, true, demoUrl.get(), null, null));
+                    SakilaDemo.DESCRIPTION, true, demoUrl.get(), null, null,
+                    MaskPolicy.of(SakilaDemo.MASK_COLUMNS, List.of())));
         }
         for (int i = 0; i < configured.size(); i++) {
             ConnectionConfig c = configured.get(i);
@@ -54,11 +57,24 @@ public class ConnectionRegistry {
             if (map.containsKey(name)) {
                 throw new IllegalArgumentException("db-scout.connections에 같은 이름이 두 번 있습니다: " + name);
             }
-            DbKind kind = DbKind.fromJdbcUrl(c.url());
+            String url = c.url().trim();
+            DbKind kind = DbKind.fromJdbcUrl(url);
+            kind.validateUrl(url);
             String description = c.description() == null ? "" : c.description();
-            map.put(name, new Entry(name, kind, description, false, c.url().trim(), c.username(), c.password()));
+            MaskPolicy policy;
+            try {
+                policy = MaskPolicy.of(nonBlank(c.maskColumns()), nonBlank(c.unmaskColumns()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("'" + name + "' 접속의 가리기 설정이 잘못됐습니다: " + e.getMessage(), e);
+            }
+            map.put(name, new Entry(name, kind, description, false, url, c.username(), c.password(), policy));
         }
         this.entries = Collections.unmodifiableMap(map);
+    }
+
+    private static List<String> nonBlank(List<String> values) {
+        if (values == null) return List.of();
+        return values.stream().filter(v -> v != null && !v.isBlank()).toList();
     }
 
     public List<Entry> list() {

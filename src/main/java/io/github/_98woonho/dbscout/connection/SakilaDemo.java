@@ -23,6 +23,15 @@ public final class SakilaDemo {
             "내장 데모 DB. 공개 샘플 DB Sakila(DVD 대여점: 영화·배우·고객·대여·결제)의 SQLite판";
     static final String RESOURCE = "/demo/sakila.db";
 
+    /**
+     * 데모 DB에서 기본 규칙 외에 더 가릴 컬럼. 이름(first_name)은 배우 이름처럼 공개 정보일 수도 있어
+     * 기본 규칙에 넣지 않고, 고객·직원처럼 테이블을 지정해 가린다. 뷰에서 이름을 합친 컬럼도 포함한다.
+     */
+    public static final java.util.List<String> MASK_COLUMNS = java.util.List.of(
+            "customer.first_name", "customer.last_name",
+            "staff.first_name", "staff.last_name", "staff.username",
+            "customer_list.name", "staff_list.name", "sales_by_store.manager");
+
     private SakilaDemo() {
     }
 

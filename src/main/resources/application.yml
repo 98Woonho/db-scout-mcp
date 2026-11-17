@@ -25,3 +25,6 @@ db-scout:
       username: ${DB_SCOUT_USERNAME:}
       password: ${DB_SCOUT_PASSWORD:}
       description: ${DB_SCOUT_DESCRIPTION:}
+      # 쉼표로 구분. 예) customer.first_name, member.nickname=secret
+      mask-columns: ${DB_SCOUT_MASK_COLUMNS:}
+      unmask-columns: ${DB_SCOUT_UNMASK_COLUMNS:}

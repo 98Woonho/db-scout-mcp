@@ -17,13 +17,25 @@ public record DbScoutProperties(
         @DefaultValue List<ConnectionConfig> connections,
         @DefaultValue Limits limits) {
 
-    /** DB 접속 하나. password는 도구 응답·로그에 절대 내보내지 않는다. */
+    /**
+     * DB 접속 하나. password는 도구 응답·로그에 절대 내보내지 않는다.
+     *
+     * @param maskColumns   기본 규칙 외에 가릴 컬럼. {@code 테이블.컬럼} 또는 {@code 컬럼}, 뒤에 {@code =secret} 등으로 방식 지정
+     * @param unmaskColumns 기본 규칙에 걸려도 가리지 않을 컬럼
+     */
     public record ConnectionConfig(
             String name,
             String url,
             String username,
             String password,
-            String description) {
+            String description,
+            List<String> maskColumns,
+            List<String> unmaskColumns) {
+
+        /** 가리기 설정 없이 만든다(테스트용). 생성자를 하나만 두어야 Spring이 설정을 바인딩할 수 있다. */
+        public static ConnectionConfig of(String name, String url, String username, String password, String description) {
+            return new ConnectionConfig(name, url, username, password, description, List.of(), List.of());
+        }
 
         public boolean isConfigured() {
             return url != null && !url.isBlank();
