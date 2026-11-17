@@ -33,6 +33,7 @@ dependencies {
 
     implementation("org.springframework.ai:spring-ai-starter-mcp-server")
     implementation("com.github.jsqlparser:jsqlparser:5.4")
+    implementation("tools.jackson.core:jackson-databind") // 도구 응답 JSON (버전은 Spring Boot가 관리)
 
     implementation("org.xerial:sqlite-jdbc:3.54.1.0") // 읽기 전용 설정(SQLiteConfig)에 직접 쓴다
     runtimeOnly("com.mysql:mysql-connector-j:26.10.0")

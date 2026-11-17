@@ -61,7 +61,9 @@ class McpStdioTest {
     void listsReadOnlyTools() {
         List<McpSchema.Tool> tools = client.listTools().tools();
 
-        assertThat(tools).extracting(McpSchema.Tool::name).contains("list_connections");
+        assertThat(tools).extracting(McpSchema.Tool::name).containsExactlyInAnyOrder(
+                "list_connections", "list_tables", "describe_table", "search_schema", "find_join_path",
+                "sample_rows", "profile_column", "explain_query", "run_query");
         assertThat(tools).allSatisfy(t -> {
             assertThat(t.annotations()).as(t.name()).isNotNull();
             assertThat(t.annotations().readOnlyHint()).as(t.name()).isTrue();
@@ -70,17 +72,48 @@ class McpStdioTest {
         });
     }
 
-    @Test
-    void listConnectionsShowsDemoWithoutSecrets() {
-        McpSchema.CallToolResult result = client.callTool(McpSchema.CallToolRequest.builder("list_connections").arguments(Map.of()).build());
+    private static McpSchema.CallToolResult call(String tool, Map<String, Object> args) {
+        return client.callTool(McpSchema.CallToolRequest.builder(tool).arguments(args).build());
+    }
 
-        assertThat(result.isError()).isNotEqualTo(Boolean.TRUE);
-        String text = result.content().stream()
+    private static String text(McpSchema.CallToolResult result) {
+        return result.content().stream()
                 .filter(McpSchema.TextContent.class::isInstance)
                 .map(c -> ((McpSchema.TextContent) c).text())
                 .reduce("", String::concat);
-        assertThat(text).contains("\"sakila\"", "SQLite", "\"demo\":true", "maxRows");
-        assertThat(text).doesNotContain("jdbc:", "password");
+    }
+
+    @Test
+    void listConnectionsShowsDemoWithoutSecrets() {
+        McpSchema.CallToolResult result = call("list_connections", Map.of());
+
+        assertThat(result.isError()).isFalse();
+        assertThat(text(result)).contains("\"sakila\"", "SQLite", "\"demo\":true", "maxRows");
+        assertThat(text(result)).doesNotContain("jdbc:", "password");
+    }
+
+    @Test
+    void runQueryMasksOverStdio() {
+        McpSchema.CallToolResult result = call("run_query",
+                Map.of("sql", "SELECT customer_id, email FROM customer ORDER BY customer_id", "maxRows", 2));
+
+        assertThat(result.isError()).isFalse();
+        assertThat(text(result)).contains("M***@sakilacustomer.org", "\"truncated\":true").doesNotContain("MARY.SMITH");
+    }
+
+    @Test
+    void rejectedQueryIsAToolError() {
+        McpSchema.CallToolResult result = call("run_query", Map.of("sql", "DELETE FROM payment"));
+
+        assertThat(result.isError()).isTrue();
+        assertThat(text(result)).startsWith("[SELECT가 아닌 문장]");
+    }
+
+    @Test
+    void optionalArgumentsCanBeOmitted() {
+        assertThat(call("list_tables", Map.of()).isError()).isFalse();
+        assertThat(call("describe_table", Map.of("table", "film")).isError()).isFalse();
+        assertThat(call("find_join_path", Map.of("fromTable", "film", "toTable", "payment")).isError()).isFalse();
     }
 
     @Test

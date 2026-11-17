@@ -28,3 +28,5 @@ db-scout:
       # 쉼표로 구분. 예) customer.first_name, member.nickname=secret
       mask-columns: ${DB_SCOUT_MASK_COLUMNS:}
       unmask-columns: ${DB_SCOUT_UNMASK_COLUMNS:}
+      # 도구에서 숨기고 조회도 막을 테이블. 예) audit_log, hr.salary
+      hidden-tables: ${DB_SCOUT_HIDDEN_TABLES:}

@@ -22,6 +22,7 @@ public record DbScoutProperties(
      *
      * @param maskColumns   기본 규칙 외에 가릴 컬럼. {@code 테이블.컬럼} 또는 {@code 컬럼}, 뒤에 {@code =secret} 등으로 방식 지정
      * @param unmaskColumns 기본 규칙에 걸려도 가리지 않을 컬럼
+     * @param hiddenTables  도구에 보이지 않고 조회도 막을 테이블. {@code 테이블} 또는 {@code 스키마.테이블}
      */
     public record ConnectionConfig(
             String name,
@@ -30,11 +31,12 @@ public record DbScoutProperties(
             String password,
             String description,
             List<String> maskColumns,
-            List<String> unmaskColumns) {
+            List<String> unmaskColumns,
+            List<String> hiddenTables) {
 
-        /** 가리기 설정 없이 만든다(테스트용). 생성자를 하나만 두어야 Spring이 설정을 바인딩할 수 있다. */
+        /** 가리기·숨기기 설정 없이 만든다(테스트용). 생성자를 하나만 두어야 Spring이 설정을 바인딩할 수 있다. */
         public static ConnectionConfig of(String name, String url, String username, String password, String description) {
-            return new ConnectionConfig(name, url, username, password, description, List.of(), List.of());
+            return new ConnectionConfig(name, url, username, password, description, List.of(), List.of(), List.of());
         }
 
         public boolean isConfigured() {

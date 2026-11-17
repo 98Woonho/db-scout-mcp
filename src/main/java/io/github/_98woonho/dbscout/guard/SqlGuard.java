@@ -5,6 +5,7 @@ import java.util.Set;
 
 import org.springframework.stereotype.Component;
 
+import io.github._98woonho.dbscout.connection.ConnectionRegistry;
 import io.github._98woonho.dbscout.connection.DbKind;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
@@ -32,6 +33,21 @@ public class SqlGuard {
 
     /** 검사를 통과한 SQL. */
     public record CheckedQuery(String sql, Select select, Set<String> tables, Set<String> functions) {
+    }
+
+    /** 접속 설정까지 반영해 검사한다: 설정에서 숨긴 테이블을 쓰면 막는다. */
+    public CheckedQuery check(String sql, ConnectionRegistry.Entry entry) {
+        CheckedQuery checked = check(sql, entry.kind());
+        for (String table : checked.tables()) {
+            String[] parts = table.split("\\.");
+            String name = parts[parts.length - 1];
+            String schema = parts.length >= 2 ? parts[parts.length - 2] : null;
+            if (entry.isHidden(schema, name)) {
+                throw new QueryRejectedException(RejectReason.FORBIDDEN_TABLE,
+                        table + " 은(는) 이 접속의 설정에서 숨긴 테이블이라 조회할 수 없습니다.");
+            }
+        }
+        return checked;
     }
 
     public CheckedQuery check(String sql, DbKind kind) {

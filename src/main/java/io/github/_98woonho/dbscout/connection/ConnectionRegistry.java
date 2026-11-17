@@ -5,7 +5,9 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -23,9 +25,26 @@ import io.github._98woonho.dbscout.mask.MaskPolicy;
 @Component
 public class ConnectionRegistry {
 
-    /** 등록된 접속 하나. 비밀번호는 여기서만 들고 있고 밖으로 내보내지 않는다. */
+    /**
+     * 등록된 접속 하나. 비밀번호는 여기서만 들고 있고 밖으로 내보내지 않는다.
+     *
+     * @param hiddenTables 숨긴 테이블. 소문자 {@code 테이블} 또는 {@code 스키마.테이블}
+     */
     public record Entry(String name, DbKind kind, String description, boolean demo,
-                        String url, String username, String password, MaskPolicy maskPolicy) {
+                        String url, String username, String password, MaskPolicy maskPolicy,
+                        Set<String> hiddenTables) {
+
+        /**
+         * 숨긴 테이블인지. 스키마를 모르면(SQLite이거나 SQL에 스키마를 안 붙인 경우) {@code 아무스키마.테이블}
+         * 설정도 맞는 것으로 본다(더 많이 막는 쪽).
+         */
+        public boolean isHidden(String schema, String table) {
+            if (hiddenTables.isEmpty() || table == null) return false;
+            String t = Identifiers.normalize(table);
+            if (hiddenTables.contains(t)) return true;
+            if (schema == null) return hiddenTables.stream().anyMatch(h -> h.endsWith("." + t));
+            return hiddenTables.contains(Identifiers.normalize(schema) + "." + t);
+        }
 
         @Override
         public String toString() {
@@ -49,7 +68,7 @@ public class ConnectionRegistry {
         if (configured.isEmpty()) {
             map.put(SakilaDemo.CONNECTION_NAME, new Entry(SakilaDemo.CONNECTION_NAME, DbKind.SQLITE,
                     SakilaDemo.DESCRIPTION, true, demoUrl.get(), null, null,
-                    MaskPolicy.of(SakilaDemo.MASK_COLUMNS, List.of())));
+                    MaskPolicy.of(SakilaDemo.MASK_COLUMNS, List.of()), Set.of()));
         }
         for (int i = 0; i < configured.size(); i++) {
             ConnectionConfig c = configured.get(i);
@@ -67,7 +86,15 @@ public class ConnectionRegistry {
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("'" + name + "' 접속의 가리기 설정이 잘못됐습니다: " + e.getMessage(), e);
             }
-            map.put(name, new Entry(name, kind, description, false, url, c.username(), c.password(), policy));
+            Set<String> hidden = nonBlank(c.hiddenTables()).stream()
+                    .map(h -> {
+                        String[] parts = h.strip().split("\\.");
+                        return parts.length >= 2
+                                ? Identifiers.normalize(parts[parts.length - 2]) + "." + Identifiers.normalize(parts[parts.length - 1])
+                                : Identifiers.normalize(parts[0]);
+                    })
+                    .collect(Collectors.toUnmodifiableSet());
+            map.put(name, new Entry(name, kind, description, false, url, c.username(), c.password(), policy, hidden));
         }
         this.entries = Collections.unmodifiableMap(map);
     }

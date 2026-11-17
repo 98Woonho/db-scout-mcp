@@ -30,7 +30,7 @@ class ReadOnlyConnectionsTest {
     private Connection open() throws SQLException {
         Path db = SakilaDemo.extract(dir);
         var entry = new ConnectionRegistry.Entry("sakila", DbKind.SQLITE, "", true, "jdbc:sqlite:" + db,
-                null, null, MaskPolicy.defaults());
+                null, null, MaskPolicy.defaults(), java.util.Set.of());
         return new ReadOnlyConnections().open(entry);
     }
 

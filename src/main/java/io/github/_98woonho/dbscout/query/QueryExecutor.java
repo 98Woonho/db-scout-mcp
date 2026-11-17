@@ -82,7 +82,7 @@ public class QueryExecutor {
      */
     public QueryResult run(String connection, String sql, Integer maxRows, Integer timeoutSeconds) {
         ConnectionRegistry.Entry entry = registry.get(connection);
-        SqlGuard.CheckedQuery checked = guard.check(sql, entry.kind());
+        SqlGuard.CheckedQuery checked = guard.check(sql, entry);
 
         List<String> notes = new ArrayList<>();
         int rows = clamp(maxRows, limits.defaultRows(), limits.maxRows(), "행 수를", "행으", notes);

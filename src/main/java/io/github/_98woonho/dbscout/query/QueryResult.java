@@ -2,6 +2,8 @@ package io.github._98woonho.dbscout.query;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 /**
  * 조회 결과. 행은 컬럼 순서대로의 값 배열이다(객체보다 짧아 Claude의 대화 공간을 덜 쓴다).
  *
@@ -11,6 +13,7 @@ import java.util.List;
  * @param truncatedCells  글자 수 제한으로 잘린 셀 개수
  * @param notes           제한값 조정 등 알아 둘 점
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record QueryResult(
         List<String> columns,
         List<List<Object>> rows,
