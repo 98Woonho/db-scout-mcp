@@ -35,7 +35,7 @@ public final class SakilaDemo {
         return Path.of(System.getProperty("java.io.tmpdir"), "db-scout");
     }
 
-    static Path extract(Path dir) {
+    public static Path extract(Path dir) {
         byte[] bytes = readResource();
         Path target = dir.resolve("sakila-" + shortHash(bytes) + ".db");
         try {
