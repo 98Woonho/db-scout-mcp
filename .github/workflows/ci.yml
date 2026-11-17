@@ -1,0 +1,78 @@
+# push·PR마다 빌드하고 테스트한다.
+#  - 단위 테스트: SQL 검사기 사례표, 가리기, 제한, 도구(내장 Sakila SQLite)
+#  - 통합 테스트: MySQL 8.4 / PostgreSQL 16 서비스 컨테이너에 Sakila를 넣고 같은 약속이 지켜지는지 확인
+#    (일부러 쓰기 권한이 있는 관리자 계정으로 접속한다. 계정이 쓸 수 있어도 서버가 막아야 하므로)
+# 비용: 공개 저장소의 GitHub Actions는 무료다.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-root"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-postgres
+          POSTGRES_DB: sakila
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Sakila 넣기 (MySQL, PostgreSQL)
+        run: bash scripts/ci/load-sakila.sh
+        env:
+          MYSQL_PASSWORD: ci-root
+          PGPASSWORD: ci-postgres
+
+      - name: 빌드와 테스트
+        run: ./gradlew build --console=plain
+        env:
+          DB_SCOUT_IT_REQUIRED: "true"
+          DB_SCOUT_IT_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/sakila?allowPublicKeyRetrieval=true&useSSL=false
+          DB_SCOUT_IT_MYSQL_USER: root
+          DB_SCOUT_IT_MYSQL_PASSWORD: ci-root
+          DB_SCOUT_IT_POSTGRES_URL: jdbc:postgresql://127.0.0.1:5432/sakila
+          DB_SCOUT_IT_POSTGRES_USER: postgres
+          DB_SCOUT_IT_POSTGRES_PASSWORD: ci-postgres
+
+      - name: 테스트 보고서 올리기 (실패했을 때)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-report
+          path: build/reports/tests/test/
+          retention-days: 7

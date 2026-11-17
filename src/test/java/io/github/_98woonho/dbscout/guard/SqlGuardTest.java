@@ -26,7 +26,7 @@ import io.github._98woonho.dbscout.connection.DbKind;
  *   <li>{@link #BLOCKED}: 막아야 하는 SQL과 막는 이유</li>
  * </ul>
  */
-class SqlGuardTest {
+public class SqlGuardTest {
 
     private static final Set<DbKind> ALL = EnumSet.allOf(DbKind.class);
     private static final Set<DbKind> MY = EnumSet.of(MYSQL);
@@ -36,13 +36,13 @@ class SqlGuardTest {
     private static final Set<DbKind> MY_LITE = EnumSet.of(MYSQL, SQLITE);
     private static final Set<DbKind> PG_LITE = EnumSet.of(POSTGRESQL, SQLITE);
 
-    record Allowed(String title, Set<DbKind> kinds, String sql) {
+    public record Allowed(String title, Set<DbKind> kinds, String sql) {
     }
 
     record Blocked(String title, Set<DbKind> kinds, RejectReason reason, String sql) {
     }
 
-    static final Allowed[] ALLOWED = {
+    public static final Allowed[] ALLOWED = {
             new Allowed("기본 조회", ALL, "SELECT * FROM actor"),
             new Allowed("조건·정렬·LIMIT", ALL,
                     "SELECT first_name, last_name FROM actor WHERE actor_id < 10 ORDER BY last_name LIMIT 5"),

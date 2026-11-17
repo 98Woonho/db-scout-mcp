@@ -57,7 +57,10 @@ AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으�
 ## 개발 환경 (이 PC)
 - JDK 21 설치됨(`C:\Program Files\Java\jdk-21.0.1`), Node.js 있음.
 - **Docker, MySQL 없음.** Testcontainers처럼 Docker가 필요한 방법은 로컬에서 쓰지 않는다.
-  MySQL·PostgreSQL 통합 테스트는 GitHub Actions의 서비스 컨테이너에서 돌린다.
+  MySQL·PostgreSQL 통합 테스트는 GitHub Actions의 서비스 컨테이너에서 돌린다(`.github/workflows/ci.yml`).
+- 통합 테스트(`src/test/java/.../it/`)는 `DB_SCOUT_IT_MYSQL_URL`·`DB_SCOUT_IT_POSTGRES_URL`(+ `_USER`, `_PASSWORD`)이 있을 때만 돈다.
+  CI는 `DB_SCOUT_IT_REQUIRED=true`를 줘서 접속 정보가 빠지면 실패하게 한다. Sakila는 `scripts/ci/load-sakila.sh`로 넣는다.
+- 로컬에서 미리 확인하려면 압축 파일형 MySQL·PostgreSQL을 스크래치 폴더에 받아 localhost로만 띄우고, 끝나면 프로세스를 끄고 지운다(사용자 승인 후, 2026-11-17에 한 번 함).
 - 셸은 PowerShell. 빌드: `.\gradlew.bat build`, 테스트: `.\gradlew.bat test`.
 
 ## 설계 원칙
