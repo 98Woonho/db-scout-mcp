@@ -173,15 +173,19 @@ public class QueryExecutor {
             columns.add(label);
             MaskKind kind;
             boolean d;
+            boolean conditionOnly = false;
             if (planUsable) {
                 OutputColumn oc = plan.outputs().get(i);
                 kind = oc.kind();
                 d = oc.derived();
+                conditionOnly = oc.conditionOnly();
             } else {
                 kind = plan.touched();
                 d = true;
             }
-            MaskKind byLabel = policy.kindFor(null, label); // 별칭이 email 이어도 가린다
+            // 별칭이 email 이어도 가린다. 단, SUM(email IS NOT NULL) AS has_email 처럼 개인정보를 조건에만 쓴
+            // 개수·참거짓 값은 별칭과 상관없이 원래 값이 아니므로 가리지 않는다
+            MaskKind byLabel = conditionOnly ? null : policy.kindFor(null, label);
             if (kind == null && byLabel != null) d = false;
             kind = MaskKind.strongest(kind, byLabel);
             masks[i] = kind;

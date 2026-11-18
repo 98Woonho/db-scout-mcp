@@ -60,6 +60,12 @@ class MaskingTest {
                 Arguments.argumentSet("상관 서브쿼리", "SELECT (SELECT c.email) AS v FROM customer c", PARTIAL_MASKED),
                 Arguments.argumentSet("CASE 안에서 쓰기",
                         "SELECT CASE WHEN customer_id > 0 THEN email END AS v FROM customer", PARTIAL_MASKED),
+                Arguments.argumentSet("CASE 조건과 값 모두",
+                        "SELECT CASE WHEN email LIKE '%.org' THEN email END AS v FROM customer", PARTIAL_MASKED),
+                Arguments.argumentSet("CASE ELSE",
+                        "SELECT CASE WHEN customer_id < 0 THEN 'x' ELSE email END AS v FROM customer", PARTIAL_MASKED),
+                Arguments.argumentSet("조건과 값을 함께 함수에",
+                        "SELECT COALESCE(NULLIF(email = 'x', 0), email) AS v FROM customer", PARTIAL_MASKED),
                 Arguments.argumentSet("테이블 함수 json_each",
                         "SELECT value AS v FROM json_each((SELECT json_group_array(email) FROM customer))", PARTIAL_MASKED));
     }
@@ -159,6 +165,86 @@ class MaskingTest {
         assertThat(column(r, "n")).containsExactly(599);
         assertThat(column(r, "d")).containsExactly(599);
         assertThat(r.maskedColumns()).isEmpty();
+    }
+
+    static Stream<Arguments> conditionsOnly() {
+        // 참/거짓만 내는 조건은 WHERE와 같게 본다(설계 결정). 결과는 참·거짓이나 그 개수뿐이라 원래 값이 나가지 않는다.
+        // 기대값은 같은 조건을 WHERE에 넣고 센 값이다
+        return Stream.of(
+                Arguments.argumentSet("IS NOT NULL 합계", "SELECT SUM(email IS NOT NULL) AS v FROM customer",
+                        "SELECT COUNT(*) AS v FROM customer WHERE email IS NOT NULL"),
+                Arguments.argumentSet("CASE 안의 LIKE 개수",
+                        "SELECT COUNT(CASE WHEN email LIKE '%.org' THEN 1 END) AS v FROM customer",
+                        "SELECT COUNT(*) AS v FROM customer WHERE email LIKE '%.org'"),
+                Arguments.argumentSet("CASE 안의 LIKE 합계",
+                        "SELECT SUM(CASE WHEN email LIKE 'M%' THEN 1 ELSE 0 END) AS v FROM customer",
+                        "SELECT COUNT(*) AS v FROM customer WHERE email LIKE 'M%'"),
+                Arguments.argumentSet("같음 비교",
+                        "SELECT SUM(email = 'MARY.SMITH@sakilacustomer.org') AS v FROM customer",
+                        "SELECT COUNT(*) AS v FROM customer WHERE email = 'MARY.SMITH@sakilacustomer.org'"),
+                Arguments.argumentSet("IN",
+                        "SELECT SUM(email IN ('MARY.SMITH@sakilacustomer.org', 'x')) AS v FROM customer",
+                        "SELECT COUNT(*) AS v FROM customer WHERE email IN ('MARY.SMITH@sakilacustomer.org', 'x')"),
+                Arguments.argumentSet("IN 서브쿼리",
+                        "SELECT SUM(address_id IN (SELECT address_id FROM customer WHERE email LIKE 'M%')) AS v FROM address",
+                        "SELECT COUNT(*) AS v FROM address WHERE address_id IN (SELECT address_id FROM customer WHERE email LIKE 'M%')"),
+                Arguments.argumentSet("BETWEEN",
+                        "SELECT SUM(email BETWEEN 'A' AND 'B') AS v FROM customer",
+                        "SELECT COUNT(*) AS v FROM customer WHERE email BETWEEN 'A' AND 'B'"),
+                Arguments.argumentSet("EXISTS",
+                        "SELECT SUM(EXISTS (SELECT email FROM customer c WHERE c.address_id = a.address_id)) AS v FROM address a",
+                        "SELECT COUNT(*) AS v FROM address a WHERE EXISTS (SELECT 1 FROM customer c WHERE c.address_id = a.address_id)"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("conditionsOnly")
+    void conditionsAreNotMasked(String sql, String whereSql) {
+        QueryResult expected = run(whereSql);
+        QueryResult r = run(sql);
+
+        assertThat(column(expected, "v").getFirst()).isInstanceOf(Integer.class).isNotEqualTo(0);
+        assertThat(column(r, "v")).containsExactlyElementsOf(column(expected, "v"));
+        assertThat(r.maskedColumns()).isEmpty();
+    }
+
+    @Test
+    void caseLabelsFromConditionsAreNotMasked() {
+        QueryResult r = run("""
+                SELECT customer_id,
+                       CASE WHEN email LIKE '%.org' THEN 'org' ELSE 'other' END AS domain,
+                       CASE email WHEN 'nobody@example.com' THEN 'yes' ELSE 'no' END AS known
+                FROM customer WHERE customer_id = 1""");
+
+        assertThat(column(r, "domain")).containsExactly("org");
+        assertThat(column(r, "known")).containsExactly("no");
+        assertThat(r.maskedColumns()).isEmpty();
+    }
+
+    @Test
+    void countAliasEndingInEmailIsNotMasked() {
+        // 별칭이 email로 끝나도, 개인정보를 조건·COUNT에만 쓴 개수는 별칭 규칙으로 가리지 않는다
+        QueryResult r = run("""
+                SELECT SUM(email IS NOT NULL) AS has_email,
+                       COUNT(email) AS with_email,
+                       SUM(CASE WHEN email LIKE '%.org' THEN 1 ELSE 0 END) AS org_email
+                FROM customer""");
+
+        assertThat(column(r, "has_email")).containsExactly(599);
+        assertThat(column(r, "with_email")).containsExactly(599);
+        assertThat(column(r, "org_email")).containsExactly(599);
+        assertThat(r.maskedColumns()).isEmpty();
+    }
+
+    @Test
+    void aliasRuleStillAppliesWhenAValueColumnIsUsed() {
+        // 값 자리에 다른 컬럼이 나오면 무엇이 담겼는지 이름 말고는 알 수 없으므로 별칭 규칙을 그대로 쓴다
+        QueryResult r = run("""
+                SELECT CASE WHEN email IS NOT NULL THEN last_update END AS with_email,
+                       1 AS email
+                FROM customer WHERE customer_id = 1""");
+
+        assertThat(r.maskedColumns()).extracting(QueryResult.MaskedColumn::column)
+                .containsExactlyInAnyOrder("with_email", "email");
     }
 
     @Test

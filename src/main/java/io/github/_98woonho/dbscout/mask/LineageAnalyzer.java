@@ -9,9 +9,27 @@ import java.util.Set;
 
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.WhenClause;
+import net.sf.jsqlparser.expression.operators.relational.Between;
+import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
+import net.sf.jsqlparser.expression.operators.relational.ExistsExpression;
+import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
+import net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals;
+import net.sf.jsqlparser.expression.operators.relational.InExpression;
+import net.sf.jsqlparser.expression.operators.relational.IsBooleanExpression;
+import net.sf.jsqlparser.expression.operators.relational.IsDistinctExpression;
+import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
+import net.sf.jsqlparser.expression.operators.relational.IsUnknownExpression;
+import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
+import net.sf.jsqlparser.expression.operators.relational.MinorThan;
+import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
+import net.sf.jsqlparser.expression.operators.relational.NotEqualsTo;
+import net.sf.jsqlparser.expression.operators.relational.RegExpMatchOperator;
+import net.sf.jsqlparser.expression.operators.relational.SimilarToExpression;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.AllColumns;
@@ -35,12 +53,27 @@ import net.sf.jsqlparser.statement.select.WithItem;
  * {@code COUNT(...)}는 개수만 돌려주므로 가리지 않는다.
  *
  * <p>WHERE·ORDER BY·GROUP BY에 쓰인 컬럼은 결과 값으로 나오지 않으므로 보지 않는다(설계 결정).
+ * SELECT 안이라도 참/거짓만 내는 조건({@code email IS NOT NULL}, {@code email LIKE '%.org'} 등)과
+ * CASE의 WHEN 조건은 같은 이유로 보지 않는다. CASE는 THEN·ELSE로 나가는 값만 본다.
  * 확신할 수 없으면 더 많이 가리는 쪽을 택한다.
  */
 public final class LineageAnalyzer {
 
-    /** 결과 컬럼 하나. kind가 null이면 가리지 않는다. derived는 원본 값이 함수·연산을 거쳤는지. */
-    public record OutputColumn(String name, MaskKind kind, boolean derived) {
+    /**
+     * 결과 컬럼 하나. kind가 null이면 가리지 않는다. derived는 원본 값이 함수·연산을 거쳤는지.
+     *
+     * @param conditionOnly 값 자리에 컬럼이 하나도 없고, 개인정보 컬럼은 조건·COUNT 안에서만 쓰였는지.
+     *                      예: {@code SUM(email IS NOT NULL) AS has_email}. 이때는 별칭이 email로 끝나도
+     *                      값이 개수·참거짓이므로 별칭 규칙으로 가리지 않는다.
+     */
+    public record OutputColumn(String name, MaskKind kind, boolean derived, boolean conditionOnly) {
+        public OutputColumn(String name, MaskKind kind, boolean derived) {
+            this(name, kind, derived, false);
+        }
+
+        OutputColumn renamed(String newName) {
+            return new OutputColumn(newName, kind, derived, conditionOnly);
+        }
     }
 
     /**
@@ -125,7 +158,7 @@ public final class LineageAnalyzer {
                 OutputColumn a = result.get(i);
                 OutputColumn b = cols.get(i);
                 result.set(i, new OutputColumn(a.name(), MaskKind.strongest(a.kind(), b.kind()),
-                        a.derived() || b.derived()));
+                        a.derived() || b.derived(), a.conditionOnly() && b.conditionOnly()));
             }
         }
         return result == null ? List.of() : result;
@@ -164,7 +197,8 @@ public final class LineageAnalyzer {
                 String name = item.getAlias() != null ? item.getAlias().getName()
                         : e instanceof Column c ? c.getColumnName() : e.toString();
                 boolean derived = !(e instanceof Column) || kc.derived;
-                OutputColumn out = new OutputColumn(name, kc.kind, derived);
+                boolean conditionOnly = kc.kind == null && !kc.valueColumns && kc.tested;
+                OutputColumn out = new OutputColumn(name, kc.kind, derived, conditionOnly);
                 touch(out);
                 outputs.add(out);
             }
@@ -273,6 +307,10 @@ public final class LineageAnalyzer {
         private final Map<String, List<OutputColumn>> env;
         MaskKind kind;
         boolean derived;
+        /** 값 자리(조건·COUNT 밖)에 컬럼·별표·서브쿼리가 하나라도 있었는지. */
+        boolean valueColumns;
+        /** 조건·COUNT 안에서 개인정보 컬럼이 쓰였는지. */
+        boolean tested;
 
         KindCollector(Scope scope, Map<String, List<OutputColumn>> env) {
             this.scope = scope;
@@ -284,8 +322,18 @@ public final class LineageAnalyzer {
             derived |= d && k != null;
         }
 
+        /** 값으로 나가지 않는 식(조건, COUNT 인자): 들어가 보기만 하고 결과에는 더하지 않는다. */
+        private Void tested(Expression e) {
+            if (e == null) return null;
+            ConditionProbe probe = new ConditionProbe(scope);
+            e.accept(probe, null);
+            tested |= probe.personal;
+            return null;
+        }
+
         @Override
         public <S> Void visit(Column column, S context) {
+            valueColumns = true;
             Resolved r = resolve(column, scope);
             add(r.kind(), r.derived());
             return null;
@@ -293,21 +341,125 @@ public final class LineageAnalyzer {
 
         @Override
         public <S> Void visit(Function function, S context) {
-            if (COUNT_FUNCTIONS.contains(norm(function.getName()))) return null; // 개수만 돌려준다
+            if (COUNT_FUNCTIONS.contains(norm(function.getName()))) { // 개수만 돌려준다
+                return tested(function.getParameters());
+            }
             return super.visit(function, context);
         }
 
         @Override
         public <S> Void visit(AnalyticExpression a, S context) {
             // 창 함수는 인자만 값으로 흘러간다(PARTITION BY·ORDER BY는 WHERE처럼 결과 값이 아님)
-            if (COUNT_FUNCTIONS.contains(norm(a.getName()))) return null;
+            if (COUNT_FUNCTIONS.contains(norm(a.getName()))) return tested(a.getExpression());
             if (a.getExpression() != null) a.getExpression().accept(this, context);
             if (a.getDefaultValue() != null) a.getDefaultValue().accept(this, context);
             return null;
         }
 
+        // ── 참/거짓만 내는 조건: WHERE와 같게 본다. 결과는 참·거짓(또는 1·0·NULL)뿐이라 원래 값이 나가지 않는다.
+        //    SUM(email IS NOT NULL), COUNT(CASE WHEN email LIKE '%.org' THEN 1 END) 등은 가리지 않는다.
+
+        @Override
+        public <S> Void visit(EqualsTo e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(NotEqualsTo e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(GreaterThan e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(GreaterThanEquals e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(MinorThan e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(MinorThanEquals e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(LikeExpression e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(SimilarToExpression e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(RegExpMatchOperator e, S context) { // PostgreSQL ~, ~*
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(IsNullExpression e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(IsBooleanExpression e, S context) { // IS TRUE, IS FALSE
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(IsUnknownExpression e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(IsDistinctExpression e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(InExpression e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(Between e, S context) {
+            return tested(e);
+        }
+
+        @Override
+        public <S> Void visit(ExistsExpression e, S context) {
+            return tested(e);
+        }
+
+        /** CASE는 결과로 나가는 THEN·ELSE 값만 본다. CASE 뒤의 식과 WHEN 조건은 비교에만 쓰인다. */
+        @Override
+        public <S> Void visit(CaseExpression c, S context) {
+            tested(c.getSwitchExpression());
+            if (c.getWhenClauses() != null) {
+                for (WhenClause w : c.getWhenClauses()) w.accept(this, context);
+            }
+            if (c.getElseExpression() != null) c.getElseExpression().accept(this, context);
+            return null;
+        }
+
+        @Override
+        public <S> Void visit(WhenClause w, S context) {
+            tested(w.getWhenExpression());
+            if (w.getThenExpression() != null) w.getThenExpression().accept(this, context);
+            return null;
+        }
+
         @Override
         public <S> Void visit(AllTableColumns atc, S context) { // row_to_json(c.*) 등
+            valueColumns = true;
             Source src = scope.find(norm(atc.getTable().getName()));
             add(src == null ? MaskKind.SECRET : src.strongestKind(), true);
             return null;
@@ -315,6 +467,7 @@ public final class LineageAnalyzer {
 
         @Override
         public <S> Void visit(AllColumns all, S context) {
+            valueColumns = true;
             for (Source src : scope.sources) add(src.strongestKind(), true);
             return null;
         }
@@ -332,7 +485,37 @@ public final class LineageAnalyzer {
         }
 
         private void subquery(Select select) {
+            valueColumns = true;
             for (OutputColumn oc : analyzeSelect(select, scope, env)) add(oc.kind(), true);
+        }
+    }
+
+    /**
+     * 조건 안에 개인정보 컬럼이 쓰였는지만 본다(별칭 규칙을 건너뛸지 정할 때 씀).
+     * 서브쿼리 안은 보지 않는다. 그러면 personal이 false로 남아 별칭 규칙이 그대로 적용된다(더 많이 가리는 쪽).
+     */
+    private final class ConditionProbe extends ExpressionVisitorAdapter<Void> {
+        private final Scope scope;
+        boolean personal;
+
+        ConditionProbe(Scope scope) {
+            this.scope = scope;
+        }
+
+        @Override
+        public <S> Void visit(Column column, S context) {
+            personal |= resolve(column, scope).kind() != null;
+            return null;
+        }
+
+        @Override
+        public <S> Void visit(ParenthesedSelect select, S context) {
+            return null;
+        }
+
+        @Override
+        public <S> Void visit(Select select, S context) {
+            return null;
         }
     }
 
@@ -405,8 +588,7 @@ public final class LineageAnalyzer {
             }
             List<OutputColumn> renamed = new ArrayList<>(columns);
             for (int i = 0; i < Math.min(renamed.size(), alias.getAliasColumns().size()); i++) {
-                OutputColumn c = renamed.get(i);
-                renamed.set(i, new OutputColumn(alias.getAliasColumns().get(i).name, c.kind(), c.derived()));
+                renamed.set(i, renamed.get(i).renamed(alias.getAliasColumns().get(i).name));
             }
             return new Source(this.alias, table, renamed, taint);
         }
@@ -416,8 +598,7 @@ public final class LineageAnalyzer {
         if (names == null || names.isEmpty()) return cols;
         List<OutputColumn> renamed = new ArrayList<>(cols);
         for (int i = 0; i < Math.min(renamed.size(), names.size()); i++) {
-            OutputColumn c = renamed.get(i);
-            renamed.set(i, new OutputColumn(names.get(i).toString(), c.kind(), c.derived()));
+            renamed.set(i, renamed.get(i).renamed(names.get(i).toString()));
         }
         return renamed;
     }
