@@ -15,10 +15,11 @@
 | 6-1 | 평가에서 찾은 개선: 가리기 규칙(참/거짓 조건은 가리지 않음), Skill에 "계산하지 않은 기준은 단정하지 않기", 채점 항목 추가(30 → 31개) | 완료. store-revenue 재평가 4/4(2026-11-22) |
 | 7 | README, docs/RELEASING.md | 완료 |
 | C | 첫 릴리스 v0.1.0과 실제 설치 확인 | 완료(2026-11-22). 플러그인 화면에서 설치 → Release jar 내려받기(해시 일치) → 질문 6개 정상 |
+| F | npm 실행기(`npx db-scout-mcp`)와 MCP 공식 레지스트리 등록 | 완료(2026-11-22, v0.1.1). 태그 push 한 번으로 Release·npm·레지스트리 자동 배포 |
 
 - GitHub Actions CI(3개 DB) 통과는 코드가 마지막으로 바뀐 커밋 `70b9512`에서 확인했습니다(2026-11-18). 그 뒤 커밋은 문서·소개 자료 정리입니다.
 - 테스트: 전체 465개. 로컬에서는 430개 통과, MySQL·PostgreSQL 통합 테스트 35개는 건너뛰는 것이 정상입니다.
-- 릴리스 v0.1.0: 태그는 커밋 `70b9512`에 있고, GitHub Release(2026-11-18)에 `db-scout-mcp.jar`와 `.sha256`이 올라가 있습니다. 그 뒤 커밋은 문서 수정뿐이라 새 릴리스는 필요 없습니다.
+- 최신 릴리스 v0.1.1(2026-11-22, 커밋 `84b148c`): GitHub Release(jar + `.sha256`), npm `db-scout-mcp@0.1.1`, MCP 레지스트리 `io.github.98Woonho/db-scout-mcp` 0.1.1. 서버 코드는 v0.1.0과 같고 npm 실행기·레지스트리 등록이 추가됐습니다.
 
 ---
 
@@ -67,14 +68,15 @@
 - 실행 기록(trace.jsonl)과 대조해 답변의 숫자가 모두 쿼리 결과에 있는 것을 확인했습니다(차이 46.98·437.57·6,586.53, 대여 기록 없는 결제 5건·9.95 포함).
 - Skill 없음 비교는 돌리지 않았습니다. 필요하면 `-NoSkills`(약 $0.15~0.3).
 
-### F. npm 배포와 MCP 공식 레지스트리 등록 (진행 중, 2026-11-22)
+### F. npm 배포와 MCP 공식 레지스트리 등록 — ✅ 완료(2026-11-22)
 레지스트리는 jar를 받지 않아서(npm, PyPI, NuGet, Cargo, Docker 이미지, MCPB만) npm 실행기로 등록합니다. korea-transit과 같은 방식입니다.
 - [x] `npm/launch.js`·`npm/package.json`, `server.json`, `scripts/set-version.mjs`, `release.yml`(npm 배포·레지스트리 단계), 테스트, 문서
 - [x] 로컬 확인: 저장소 안(로컬 jar), `npm pack` 설치본을 임시 홈에서 실행(Release v0.1.0 jar 받기·해시 `89de3238…` 일치, 두 번째는 받지 않음), 없는 버전 404, 잘못된 JAVA_HOME, `DB_SCOUT_URL`로 다른 DB
 - [x] 사용자: npm 첫 배포 `db-scout-mcp@0.1.0`(2026-11-22). 새 패키지는 npm 자동 검토로 약 1분간 `0.0.0-stage` 자리 표시 버전이 먼저 보인 뒤 공개됨. 실제 `npx -y db-scout-mcp`로 jar 받기·MCP 연결 확인
-- [ ] 사용자: npmjs.com에서 Trusted Publishing 설정 (docs/RELEASING.md "최초 1회 설정")
-- [ ] 사용자: `node scripts/set-version.mjs 0.1.1` → 커밋·태그 v0.1.1 push → Actions에서 Release·npm·레지스트리 단계 확인
-- [ ] 레지스트리에 `io.github.98Woonho/db-scout-mcp` 0.1.1이 보이는지 확인
+- [x] 사용자: npmjs.com에서 Trusted Publishing 설정
+- [x] v0.1.1 태그 push → Release 워크플로 전 단계 성공(Release jar·`.sha256`, npm 실행기 확인, npm 배포 Trusted Publishing, 레지스트리 등록)
+- [x] 레지스트리에 `io.github.98Woonho/db-scout-mcp` 0.1.1 active·isLatest, npm `latest` 0.1.1 확인
+- [ ] (선택) 첫 자동 배포가 성공했으니 npmjs.com 패키지 Settings → Publishing access → "Require two-factor authentication and disallow tokens"
 
 ### E. 나중에 검토할 것
 - 평가를 문제당 3회로 늘려 결과의 흔들림 보기(비용 약 3배).
