@@ -71,7 +71,8 @@
 레지스트리는 jar를 받지 않아서(npm, PyPI, NuGet, Cargo, Docker 이미지, MCPB만) npm 실행기로 등록합니다. korea-transit과 같은 방식입니다.
 - [x] `npm/launch.js`·`npm/package.json`, `server.json`, `scripts/set-version.mjs`, `release.yml`(npm 배포·레지스트리 단계), 테스트, 문서
 - [x] 로컬 확인: 저장소 안(로컬 jar), `npm pack` 설치본을 임시 홈에서 실행(Release v0.1.0 jar 받기·해시 `89de3238…` 일치, 두 번째는 받지 않음), 없는 버전 404, 잘못된 JAVA_HOME, `DB_SCOUT_URL`로 다른 DB
-- [ ] 사용자: npm 첫 배포(0.1.0, 직접) → npmjs.com에서 Trusted Publishing 설정 (docs/RELEASING.md "최초 1회 설정")
+- [x] 사용자: npm 첫 배포 `db-scout-mcp@0.1.0`(2026-11-22). 새 패키지는 npm 자동 검토로 약 1분간 `0.0.0-stage` 자리 표시 버전이 먼저 보인 뒤 공개됨. 실제 `npx -y db-scout-mcp`로 jar 받기·MCP 연결 확인
+- [ ] 사용자: npmjs.com에서 Trusted Publishing 설정 (docs/RELEASING.md "최초 1회 설정")
 - [ ] 사용자: `node scripts/set-version.mjs 0.1.1` → 커밋·태그 v0.1.1 push → Actions에서 Release·npm·레지스트리 단계 확인
 - [ ] 레지스트리에 `io.github.98Woonho/db-scout-mcp` 0.1.1이 보이는지 확인
 

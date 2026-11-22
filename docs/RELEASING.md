@@ -95,6 +95,8 @@ Remove-Item LICENSE
 cd ..
 ```
 
+- 새 패키지는 npm 자동 검토 동안 `0.0.0-stage`라는 자리 표시 버전이 먼저 보이고, 1분쯤 뒤 실제 버전이 공개됩니다. Staged Packages에 아무것도 없으면 기다리면 됩니다.
+
 그다음 npmjs.com에서:
 - [ ] 패키지 **Settings → Trusted publishing → GitHub Actions**
   - Organization or user: `98Woonho`
