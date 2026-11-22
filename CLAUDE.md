@@ -63,7 +63,7 @@ AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으�
   - 한계: Sakila는 유명한 공개 DB라 Skill 없이도 Claude가 구조를 미리 안다.
   - 채점이 놓친 점(실행 기록 대조로 발견): ① 매장 매출에서 두 기준만 계산하고 "다른 기준으로 봐도 2번 매장이 1위"라고 단정(고객 등록 매장 기준은 1번이 1위). Skill 없음도 같은 단정. 결과에 없는 숫자("결제 5,016건")도 섞임. ② `SUM(email IS NOT NULL)` 같은 개수가 가리기 규칙 때문에 `5***`로 가려짐(2026-11-18 고침).
 
-## 개발 환경 (이 PC)
+## 개발 환경
 - JDK 21 설치됨(`C:\Program Files\Java\jdk-21.0.1`), Node.js 있음.
 - **Docker, MySQL 없음.** Testcontainers처럼 Docker가 필요한 방법은 로컬에서 쓰지 않는다.
   MySQL·PostgreSQL 통합 테스트는 GitHub Actions의 서비스 컨테이너에서 돌린다(`.github/workflows/ci.yml`).

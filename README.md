@@ -76,7 +76,7 @@ Claude Code 플러그인으로 설치하면 도구와 함께 Skill 2개가 들�
 
 ### 한계
 
-- **가장 확실한 방법은 읽기 권한만 있는 DB 계정**입니다. 위 안전장치는 그 위에 더하는 보호입니다.
+- **가장 확실한 방법은 읽기 권한만 있는 DB 계정**입니다. 위 안전장치는 그 위에 더하는 보호입니다. 계정 만드는 예시는 [아래](#읽기-전용-계정-만들기)에 있습니다.
 - 개인정보 판단은 **컬럼 이름** 기준입니다(이름 끝이 email, phone, password, address, birth 등). `memo`, `note` 같은 자유 입력 칸 안에 적힌 개인정보는 찾지 못합니다. 이런 컬럼은 `mask-columns`에 직접 적으세요.
 - 사람 이름(`first_name` 등)은 배우 이름처럼 공개 정보일 수 있어 기본 규칙에 넣지 않았습니다. 가릴 이름 컬럼은 `mask-columns`에 `테이블.컬럼`으로 적습니다(데모 DB는 고객·직원 이름을 가립니다).
 - 개인정보 컬럼을 WHERE·ORDER BY·GROUP BY에 쓰는 것은 막지 않습니다. 조건을 반복해 값을 추측하는 것까지 막지는 못합니다. 가리기의 목적은 개인정보가 Claude의 대화로 그대로 흘러 들어가지 않게 하는 것입니다.
@@ -243,6 +243,24 @@ db-scout:
 ```powershell
 java -jar db-scout-mcp.jar --spring.config.additional-location=file:C:/tools/db-scout.yml
 ```
+
+### 읽기 전용 계정 만들기
+
+서버의 안전장치와 별개로, 접속 계정 자체에 읽기 권한만 주는 것이 가장 확실합니다.
+
+```sql
+-- PostgreSQL
+CREATE ROLE readonly LOGIN PASSWORD '...';
+GRANT CONNECT ON DATABASE shop TO readonly;
+GRANT USAGE ON SCHEMA public TO readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly;
+
+-- MySQL
+CREATE USER 'readonly'@'%' IDENTIFIED BY '...';
+GRANT SELECT ON shop.* TO 'readonly'@'%';
+```
+
+개인정보 컬럼 자체를 볼 필요가 없다면, 그 컬럼을 뺀 뷰(view)에만 권한을 주는 것이 가장 안전합니다.
 
 ## 개발
 

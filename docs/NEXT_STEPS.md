@@ -1,8 +1,8 @@
 # 이어서 할 작업
 
-다른 PC에서 개발을 이어가기 위한 정리입니다. 작업 규칙과 결정 사항은 [CLAUDE.md](../CLAUDE.md)에 있습니다. 이 문서는 **지금 어디까지 왔고 무엇이 남았는지**만 다룹니다.
+개발을 이어가기 위한 정리입니다. 작업 규칙과 결정 사항은 [CLAUDE.md](../CLAUDE.md)에 있습니다. 이 문서는 **지금 어디까지 왔고 무엇이 남았는지**만 다룹니다.
 
-마지막 정리: 2026-11-18
+마지막 정리: 2026-11-22
 
 ---
 
@@ -18,8 +18,7 @@
 | 8 | 포트폴리오 연동(showcase) | 남음 |
 
 - 마지막 커밋 `70b9512`까지 push 완료. 이 커밋의 GitHub Actions CI(3개 DB) 통과 확인(2026-11-18).
-- 테스트: 전체 465개. 로컬에서는 430개 통과, MySQL·PostgreSQL 통합 테스트 35개는 건너뛰는 것이 정상입니다.
-- **태그 `v0.1.0`은 아직 push하지 않았습니다.** 그래서 GitHub Release도 없습니다.
+- 테스트: 전체 465개. 로컬에서는 430개 통과, MySQL·PostgreSQL 통합 테스트 35개는 건너뛰는 것이 정상입니다.- **태그 `v0.1.0`은 아직 push하지 않았습니다.** 그래서 GitHub Release도 없습니다.
 
 ---
 
@@ -97,31 +96,7 @@ GitHub Actions의 Release 워크플로가 성공했는지, Releases에 `db-scout
 
 ---
 
-## 3. PC 준비
-
-1. **JDK 21** 설치. `java -version`으로 21인지 확인합니다.
-2. 저장소 받기
-   ```powershell
-   git clone https://github.com/98Woonho/db-scout-mcp.git
-   cd db-scout-mcp
-   .\gradlew.bat build
-   ```
-   첫 빌드 때 Gradle(약 140MB)과 Sakila SQL(약 8.5MB)을 내려받습니다.
-3. **Claude Code**에서 이 폴더를 엽니다. CLAUDE.md는 자동으로 읽힙니다.
-4. 평가를 돌리려면 `claude` CLI 경로를 확인합니다(PATH에 없으면 VS Code 확장 안에 있음).
-   ```powershell
-   Get-ChildItem "$env:USERPROFILE\.vscode\extensions\anthropic.claude-code-*\resources\native-binary\claude.exe"
-   $env:CLAUDE_BIN = "<위에서 찾은 경로>"
-   ```
-5. D단계에는 저장소가 두 개 더 필요합니다(이 저장소와 같은 폴더에 받기): 포트폴리오 `98Woonho/98Woonho.github.io`, 참고용 `98Woonho/korea-transit-mcp`.
-
-**PC별 메모**
-- 회사 PC(`C:\Users\leeunho`): PATH와 JAVA_HOME이 Java 1.8입니다. JDK 21은 `C:\Users\leeunho\.jdks\temurin-21.0.10`. 빌드는 그 셸에서만 바꿔 씁니다: `$env:JAVA_HOME = "$env:USERPROFILE\.jdks\temurin-21.0.10"; .\gradlew.bat build`. `gh` CLI 없음. 이 PC에서 C-3을 하려면 PATH의 java를 21로 바꿔야 합니다.
-- 평가 결과(`plugin/evals/results/`)는 git에서 제외돼 있어 PC 사이에 넘어오지 않습니다. 숫자는 CLAUDE.md에 있습니다.
-
----
-
-## 4. 새 대화를 시작할 때
+## 3. 새 대화를 시작할 때
 
 Claude Code에 이렇게 말하면 이어집니다.
 
