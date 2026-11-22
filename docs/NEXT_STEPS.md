@@ -70,6 +70,11 @@
 
 ### D. 포트폴리오 연동 (B안으로 결정됨) ← 여기부터
 
+2026-11-22 진행 상황
+- ✅ `showcase/showcase.json`(소개 자료, 데모는 비어 있음), `showcase/tools.json`(McpStdioTest가 실제 서버와 비교)
+- ✅ 포트폴리오: `build-showcase.mjs`가 `showcase.tools`가 있으면 파일을 읽음, 첫 문장 자르기에서 "..." 제외, 상세 페이지의 인증키 단계·데모 절을 있을 때만 표시, `showcase.config.json`에 추가. `--local` 빌드와 `npm run build` 통과
+- ⏳ **데모(`showcase/demos/*.json`)**: 실제 실행 기록 필요. 아래 계획 참고
+
 포트폴리오가 서버를 실행하지 않고, 이 저장소의 도구 목록 파일을 읽는 방식입니다.
 
 **이 저장소에서 할 일**

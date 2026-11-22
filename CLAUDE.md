@@ -87,6 +87,8 @@ AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으�
 - **STDIO 주의:** MCP 통신이 표준출력(stdout)을 쓰므로 배너·로그를 stdout에 내보내지 않는다(로그는 stderr 또는 파일).
 
 ## 포트폴리오 연동
-- 포트폴리오(`C:\Users\WoonHo\Desktop\98Woonho.github.io`)는 빌드 때 이 저장소의 `showcase/showcase.json`, `showcase/demos/*.json`을 가져간다.
-- 포트폴리오의 `scripts/build-showcase.mjs`는 현재 npm 패키지만 실행할 수 있다. Java 서버 실행 방식을 추가해야 하며, 포트폴리오 쪽 수정도 사용자 확인 후 진행한다.
+- 포트폴리오(`C:\Users\WoonHo\Desktop\98Woonho.github.io`)는 빌드 때 이 저장소의 `showcase/showcase.json`, `showcase/tools.json`, `showcase/demos/*.json`을 GitHub(main)에서 가져간다. 포트폴리오 쪽 수정은 사용자 확인 후 진행한다.
+- 도구 목록은 서버를 실행하지 않고 `showcase/tools.json`을 읽는다(B안, 2026-11-22 연동). `McpStdioTest`가 실제 서버와 같은지 확인하고, 도구 설명이나 버전을 바꾸면 `.\gradlew.bat test -PupdateShowcase`로 다시 만든다.
+- 포트폴리오는 도구 설명의 첫 문장만 보여 준다. 첫 문장만 읽어도 무엇을 하는 도구인지 알 수 있게 쓴다.
+- 확인: 포트폴리오 폴더에서 `node scripts/build-showcase.mjs --local`(이 저장소의 로컬 파일 사용) → `npm run build`.
 - 데모(`showcase/demos/*.json`)는 실제 실행 기록을 바탕으로 만들고, 캡션에 날짜·모델·버전을 적는다.
