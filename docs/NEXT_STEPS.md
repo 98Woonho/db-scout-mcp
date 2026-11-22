@@ -14,26 +14,22 @@
 | 6 | 플러그인, Skill 2개, 평가 7문제(Skill 있음 30/30, 없음 26/30) | 완료 |
 | 6-1 | 평가에서 찾은 개선: 가리기 규칙(참/거짓 조건은 가리지 않음), Skill에 "계산하지 않은 기준은 단정하지 않기", 채점 항목 추가(30 → 31개) | 완료. **store-revenue 재평가는 아직** |
 | 7 | README, docs/RELEASING.md | 완료 |
-| C | 첫 릴리스 v0.1.0과 실제 설치 확인 | **진행 중** (아래 2절) |
+| C | 첫 릴리스 v0.1.0과 실제 설치 확인 | 릴리스·내려받기 확인 완료. **실제 Claude Code 설치(C-3)만 남음** |
 | 8 | 포트폴리오 연동(showcase) | 남음 |
 
 - 마지막 커밋 `70b9512`까지 push 완료. 이 커밋의 GitHub Actions CI(3개 DB) 통과 확인(2026-11-18).
-- 테스트: 전체 465개. 로컬에서는 430개 통과, MySQL·PostgreSQL 통합 테스트 35개는 건너뛰는 것이 정상입니다.- **태그 `v0.1.0`은 아직 push하지 않았습니다.** 그래서 GitHub Release도 없습니다.
+- 테스트: 전체 465개. 로컬에서는 430개 통과, MySQL·PostgreSQL 통합 테스트 35개는 건너뛰는 것이 정상입니다.
+- 릴리스 v0.1.0: 태그는 커밋 `70b9512`에 있고, GitHub Release(2026-11-18)에 `db-scout-mcp.jar`와 `.sha256`이 올라가 있습니다. 그 뒤 커밋은 문서 수정뿐이라 새 릴리스는 필요 없습니다.
 
 ---
 
 ## 2. 다음 작업 (권장 순서)
 
-### C. 첫 릴리스 v0.1.0과 설치 확인 ← 여기부터
+### C. 첫 릴리스 v0.1.0과 설치 확인 ← 여기부터 (C-3만 남음)
 
-**C-1. 태그 push** (사용자가 직접)
-```powershell
-git tag v0.1.0
-git push origin v0.1.0
-```
-GitHub Actions의 Release 워크플로가 성공했는지, Releases에 `db-scout-mcp.jar`와 `db-scout-mcp.jar.sha256` 두 파일이 올라왔는지 확인합니다.
+**C-1. 태그 push** — ✅ 완료(2026-11-18). Release에 jar와 `.sha256` 두 파일이 있습니다.
 
-**C-2. 내려받기 경로 확인** (Claude가 무료로 할 수 있음)
+**C-2. 내려받기 경로 확인** — ✅ 완료(2026-11-22)
 
 2026-11-18에 Claude Code 설치 없이 실행기(`plugin/bin/Launch.java`)를 저장소 밖에서 확인했습니다. 방법은 이렇습니다.
 - `plugin/`을 저장소 밖 임시 폴더에 복사하고, `java -Duser.home=<임시 홈> Launch.java <복사한 폴더>`로 실행합니다. 홈을 바꾸면 실제 `~/.db-scout`를 건드리지 않습니다.
@@ -45,7 +41,9 @@ GitHub Actions의 Release 워크플로가 성공했는지, Releases에 `db-scout
 | 받아 둔 jar(`<홈>/.db-scout/jars/0.1.0/`)로 서버 실행 | ✅ |
 | 설정 없음(치환 안 된 `${user_config.db_url}` 포함) → 내장 Sakila | ✅ |
 | `DB_SCOUT_PLUGIN_URL`에 다른 SQLite 지정 → 그 DB(`main`, demo:false)로 접속, 응답에 URL 안 나옴 | ✅ |
-| **빈 홈에서 Release의 jar를 받아 SHA-256 확인 후 보관** | 태그 push 후 확인 |
+| 빈 홈에서 Release의 jar를 받아 SHA-256 확인 후 보관(첫 실행 약 14초, 해시가 Release의 `.sha256`과 일치, 임시 파일 안 남음) | ✅ 2026-11-22 |
+| 두 번째 실행은 다시 받지 않음(약 4초) | ✅ 2026-11-22 |
+| 없는 버전(9.9.9)은 404와 "인터넷 연결이나 플러그인 버전을 확인하세요"로 멈추고 파일을 남기지 않음 | ✅ 2026-11-22 |
 
 확인 스크립트는 임시 폴더에 있어서 남지 않습니다. 다시 만들 때 주의할 점:
 - Windows PowerShell 5.1은 BOM 없는 `.ps1`의 한글을 깨뜨립니다. 스크립트는 영어(ASCII)로만 씁니다.
@@ -100,4 +98,4 @@ GitHub Actions의 Release 워크플로가 성공했는지, Releases에 `db-scout
 
 Claude Code에 이렇게 말하면 이어집니다.
 
-> docs/NEXT_STEPS.md 읽고 이어서 하자. 태그 v0.1.0 push했어. C-2(내려받기 확인)부터.
+> docs/NEXT_STEPS.md 읽고 이어서 하자. C-3(Claude Code 설치) 해 봤어. 결과는 ○○야.
