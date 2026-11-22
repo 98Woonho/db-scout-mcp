@@ -1,6 +1,6 @@
 {
   "name": "db-scout-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Read-only database MCP server for AI agents: schema discovery, join paths, safe SELECT with row/time limits and PII masking (MySQL, PostgreSQL, SQLite). Requires Java 21.",
   "mcpName": "io.github.98Woonho/db-scout-mcp",
   "type": "module",

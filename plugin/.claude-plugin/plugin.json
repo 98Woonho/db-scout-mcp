@@ -1,7 +1,7 @@
 {
   "name": "db-scout",
   "displayName": "DB Scout",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "데이터베이스 구조 파악과 읽기 전용 조회 MCP 서버 + Skill: DB 구조 설명(db-explore), 데이터 질문에 SQL로 답하기(data-question). 쓰기 차단·행 수/시간 제한·개인정보 가리기. 설정 없이 쓰면 내장 샘플 DB(Sakila)로 동작합니다.",
   "author": {
     "name": "98Woonho",
