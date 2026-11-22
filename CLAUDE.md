@@ -1,7 +1,7 @@
 # db-scout-mcp
 
 AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으로 안전하게** 조회하는 MCP 서버와 Claude Skill.
-이전 프로젝트 korea-transit-mcp(`C:\Users\WoonHo\Desktop\mcp`)의 구조(plugin/, showcase/, 평가 방식)를 이어받는다.
+이전 프로젝트 korea-transit-mcp(`C:\Users\WoonHo\Desktop\mcp`)의 구조(plugin/, 평가 방식)를 이어받는다.
 
 **지금 어디까지 했고 무엇이 남았는지는 [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md)에 있다. 새 대화를 시작하면 먼저 읽는다.**
 
@@ -85,10 +85,4 @@ AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으�
 - **검사한 SQL을 그대로 실행한다.** `SqlGuard`가 주석을 지운 SQL(`CheckedQuery.sql()`)을 돌려주며, DB에는 반드시 이것을 보낸다. 원본 SQL을 보내면 분석기와 DB가 주석을 다르게 읽는 틈(MySQL `/*! */` 등)이 다시 생긴다.
 - **모르면 막는다.** 분석하지 못한 SQL, 검사기가 끝까지 훑지 못한 구문은 실행하지 않는다. 새 우회 방법을 찾으면 `SqlGuardTest`의 사례표에 먼저 추가한다.
 - **STDIO 주의:** MCP 통신이 표준출력(stdout)을 쓰므로 배너·로그를 stdout에 내보내지 않는다(로그는 stderr 또는 파일).
-
-## 포트폴리오 연동
-- 포트폴리오(`C:\Users\WoonHo\Desktop\98Woonho.github.io`)는 빌드 때 이 저장소의 `showcase/showcase.json`, `showcase/tools.json`, `showcase/demos/*.json`을 GitHub(main)에서 가져간다. 포트폴리오 쪽 수정은 사용자 확인 후 진행한다.
-- 도구 목록은 서버를 실행하지 않고 `showcase/tools.json`을 읽는다(B안, 2026-11-22 연동). `McpStdioTest`가 실제 서버와 같은지 확인하고, 도구 설명이나 버전을 바꾸면 `.\gradlew.bat test -PupdateShowcase`로 다시 만든다.
-- 포트폴리오는 도구 설명의 첫 문장만 보여 준다. 첫 문장만 읽어도 무엇을 하는 도구인지 알 수 있게 쓴다.
-- 확인: 포트폴리오 폴더에서 `node scripts/build-showcase.mjs --local`(이 저장소의 로컬 파일 사용) → `npm run build`.
-- 데모(`showcase/demos/*.json`)는 실제 실행 기록을 바탕으로 만들고, 캡션에 날짜·모델·버전을 적는다.
+- **도구 설명은 첫 문장만 읽어도 무엇을 하는 도구인지 알 수 있게** 쓴다. 도구 목록 화면 등에서 첫 문장만 쓰일 수 있다.

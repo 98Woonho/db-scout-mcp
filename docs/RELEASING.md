@@ -20,11 +20,8 @@
 ## 2. 확인
 
 ```powershell
-.\gradlew.bat test -PupdateShowcase   # 포트폴리오용 도구 목록(showcase/tools.json)을 새 버전으로 다시 만든다
-.\gradlew.bat build                   # 테스트 전부(버전 일치 검사 포함)
+.\gradlew.bat build    # 테스트 전부(버전 일치 검사 포함)
 ```
-
-`showcase/tools.json`에는 서버 버전과 도구 목록이 들어 있어서, 버전을 올리거나 도구 설명을 바꾸면 다시 만들어야 합니다. 다시 만들지 않으면 `McpStdioTest`가 실패합니다.
 
 Skill이나 평가 문제를 바꿨다면 필요할 때 평가도 돌립니다(비용 발생, 약 $1). [README의 다시 평가하기](../README.md#다시-평가하기)를 보세요.
 

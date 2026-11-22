@@ -15,7 +15,6 @@
 | 6-1 | 평가에서 찾은 개선: 가리기 규칙(참/거짓 조건은 가리지 않음), Skill에 "계산하지 않은 기준은 단정하지 않기", 채점 항목 추가(30 → 31개) | 완료. **store-revenue 재평가는 아직** |
 | 7 | README, docs/RELEASING.md | 완료 |
 | C | 첫 릴리스 v0.1.0과 실제 설치 확인 | 완료(2026-11-22). 플러그인 화면에서 설치 → Release jar 내려받기(해시 일치) → 질문 6개 정상 |
-| 8 | 포트폴리오 연동(showcase) | 남음 |
 
 - 마지막 커밋 `70b9512`까지 push 완료. 이 커밋의 GitHub Actions CI(3개 DB) 통과 확인(2026-11-18).
 - 테스트: 전체 465개. 로컬에서는 430개 통과, MySQL·PostgreSQL 통합 테스트 35개는 건너뛰는 것이 정상입니다.
@@ -65,34 +64,7 @@
 ### A-1 재평가: store-revenue (비용 약 $0.2~0.5, 사용자 확인 후)
 - Skill과 채점 항목(`plugin/evals/data-question/store-revenue/graders/04-no-unverified-claim.md`)은 고쳤지만 실제로 돌려 보지는 않았습니다.
 - `.\scripts\eval.ps1 --case store-revenue` (Skill 없이 비교하려면 `-NoSkills`도). 실행 전에 무료 검사 `.\gradlew.bat test --tests "*PluginFilesTest*"`.
-- D단계 데모용 실행 기록이 필요할 때 함께 돌리면 비용을 아낄 수 있습니다(`--keep-temp`라 기록이 남음).
 - 결과가 나오면 README "품질 검증"과 CLAUDE.md "알아 둘 사실"을 갱신합니다.
-
-### D. 포트폴리오 연동 (B안으로 결정됨) ← 여기부터
-
-2026-11-22 진행 상황
-- ✅ `showcase/showcase.json`(소개 자료, 데모는 비어 있음), `showcase/tools.json`(McpStdioTest가 실제 서버와 비교)
-- ✅ 포트폴리오: `build-showcase.mjs`가 `showcase.tools`가 있으면 파일을 읽음, 첫 문장 자르기에서 "..." 제외, 상세 페이지의 인증키 단계·데모 절을 있을 때만 표시, `showcase.config.json`에 추가. `--local` 빌드와 `npm run build` 통과
-- ⏳ **데모(`showcase/demos/*.json`)**: 실제 실행 기록 필요. 아래 계획 참고
-
-포트폴리오가 서버를 실행하지 않고, 이 저장소의 도구 목록 파일을 읽는 방식입니다.
-
-**이 저장소에서 할 일**
-- `showcase/showcase.json`: korea-transit-mcp의 `showcase/showcase.json` 형식을 따릅니다. `npm` 대신 `tools` 항목을 둡니다. 내용은 소개, 하이라이트(평가 30/30 대 26/30, 차단 사례 94개, 3개 DB CI, LLM 비용 0원), principles, skills, toolGroups, quality, install.
-- `showcase/tools.json`: 실제 서버의 도구 목록(이름, 제목, 설명). `McpStdioTest`에 "jar를 띄워 받은 도구 목록이 이 파일과 같은가"를 추가해, 서로 어긋나면 CI가 실패하게 합니다. 처음 만들 때는 테스트가 파일을 쓰는 모드를 둡니다.
-- `showcase/demos/*.json`: **실제 실행 기록을 바탕으로** 만듭니다. 이전 평가 기록은 남아 있지 않으므로 평가를 다시 돌리거나(비용 확인 후) Claude Code에서 직접 질문해 기록합니다. 후보:
-  - 카테고리 매출(조인 경로 확인 → SQL → 답)
-  - 개인정보 요청(가려진 채 안내)
-  - 쓰기 요청(실행하지 않고 영향 행 수와 SQL 안내)
-  - 매장 매출(기준에 따라 답이 바뀜)
-
-  캡션에는 날짜, 모델, 버전을 적습니다.
-- 소개 페이지가 생기면 README 위쪽에 링크를 추가합니다.
-
-**포트폴리오 저장소에서 할 일** (사용자 확인 후)
-- `scripts/build-showcase.mjs`의 `listTools()`: `showcase.json`에 `tools`가 있으면 서버를 실행하지 않고 `showcase/tools.json`을 읽습니다(로컬 또는 GitHub raw). korea-transit은 지금처럼 npm으로 실행합니다.
-- `showcase.config.json`에 `{ "repo": "98Woonho/db-scout-mcp", "ref": "main", "local": "../db-scout-mcp" }` 추가
-- `node scripts/build-showcase.mjs --local`로 확인합니다.
 
 ### E. 나중에 검토할 것
 - MCP 공식 레지스트리 등록: npm·PyPI 패키지가 아니라 jar라서 등록 방식(MCPB 등)을 따로 조사해야 합니다.
@@ -105,4 +77,4 @@
 
 Claude Code에 이렇게 말하면 이어집니다.
 
-> docs/NEXT_STEPS.md 읽고 이어서 하자. D(포트폴리오 연동)부터.
+> docs/NEXT_STEPS.md 읽고 이어서 하자.

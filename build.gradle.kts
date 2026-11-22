@@ -56,15 +56,9 @@ val bootJarFile = tasks.bootJar.flatMap { it.archiveFile }
 tasks.test {
     useJUnitPlatform()
     inputs.file(bootJarFile)
-    inputs.files("showcase/tools.json") // 포트폴리오용 도구 목록이 바뀌면 다시 검사(파일이 없어도 됨)
     jvmArgumentProviders.add(CommandLineArgumentProvider {
         listOf("-Ddbscout.jar=${bootJarFile.get().asFile.absolutePath}")
     })
-    // .\gradlew.bat test -PupdateShowcase : showcase/tools.json 을 실제 서버의 도구 목록으로 다시 쓴다
-    if (project.hasProperty("updateShowcase")) {
-        systemProperty("dbscout.updateShowcase", "true")
-        outputs.upToDateWhen { false }
-    }
 }
 
 // 서버가 initialize 응답에 보낼 버전을 Gradle 버전과 맞춘다 (application.yml 의 "@version@")
