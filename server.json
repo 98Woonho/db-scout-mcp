@@ -1,0 +1,60 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.98Woonho/db-scout-mcp",
+  "title": "DB Scout",
+  "description": "Read-only DB explorer for AI agents: schema, join paths, safe SELECT, PII masking. Needs Java 21",
+  "repository": {
+    "url": "https://github.com/98Woonho/db-scout-mcp",
+    "source": "github",
+    "subfolder": "npm"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "db-scout-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "DB_SCOUT_URL",
+          "description": "JDBC URL (MySQL, PostgreSQL, SQLite). Leave empty to use the built-in Sakila sample DB",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "DB_SCOUT_USERNAME",
+          "description": "DB user (a read-only account is recommended). Leave empty for SQLite",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "DB_SCOUT_PASSWORD",
+          "description": "DB password",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "DB_SCOUT_MASK_COLUMNS",
+          "description": "Extra columns to mask, comma-separated (e.g. member.name, member.nickname=secret)",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "DB_SCOUT_HIDDEN_TABLES",
+          "description": "Tables to hide from tools and block in queries, comma-separated",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

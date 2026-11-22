@@ -51,6 +51,7 @@ AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으�
 - 숨긴 테이블(`hidden-tables`)은 구조 도구에서 빠지고, 조회 SQL에 나오면 검사 단계에서 막는다. 스키마를 모르면 `아무스키마.테이블` 설정도 맞는 것으로 본다(더 많이 막는 쪽). 시스템 카탈로그(information_schema 등)로 구조를 보는 것까지 막지는 않는다. (2026-11-17)
 - 도구는 결과를 `CallToolResult`로 직접 만든다(`ToolResults`). 예상한 실패는 이유를 그대로, 예상하지 못한 예외는 종류만 알린다(메시지에 데이터가 섞일 수 있어서). (2026-11-17)
 - 도구 인자 이름은 camelCase(korea-transit과 같음): `table`, `fromTable`, `maxRows`, `connection` 등. (2026-11-17)
+- MCP 공식 레지스트리는 jar를 받지 않으므로 **npm 실행기**로 등록한다(korea-transit과 같은 방식: `mcpName` + `server.json` + `mcp-publisher` GitHub OIDC). Docker 이미지는 로컬에 Docker가 없어 확인할 수 없고, 회사 PC·localhost DB 접근이 번거로워 보류. 필요해지면 `server.json`에 oci 패키지를 추가한다. (2026-11-22)
 
 ## 알아 둘 사실
 - jOOQ판 Sakila(SQLite)의 `address.phone`은 603개 모두 공백 한 칸이다. 전화번호 가리기 테스트는 값을 직접 만들어 확인한다.
@@ -74,7 +75,8 @@ AI 에이전트가 데이터베이스 구조를 파악하고 **읽기 전용으�
 
 ## 플러그인·평가
 - 플러그인: `plugin/`(Skill 2개, 실행기 `bin/Launch.java`, 평가 `evals/`). 마켓플레이스: `.claude-plugin/marketplace.json`.
-- 버전은 `gradle.properties` 한 곳. `plugin/.claude-plugin/plugin.json`의 version과 같아야 한다(`PluginFilesTest`). 태그 `v<버전>` push → `release.yml`이 jar와 `.sha256`을 GitHub Release에 올린다.
+- 버전은 네 곳(`gradle.properties`, `plugin.json`, `npm/package.json`, `server.json`)이 같아야 한다(`PluginFilesTest`). `node scripts/set-version.mjs <버전>`으로 맞춘다. 태그 `v<버전>` push → `release.yml`이 jar와 `.sha256`을 GitHub Release에 올리고, npm 배포와 MCP 레지스트리 등록까지 한다.
+- npm 실행기(`npm/launch.js`)는 `Launch.java`와 같은 일(Release jar 받기·해시 확인·`~/.db-scout/jars/<버전>/` 보관)을 한다. 한쪽을 고치면 다른 쪽도 고친다(`PluginFilesTest`가 주소·보관 위치 일치를 검사).
 - 평가 파일 형식(YAML, 정규식, 도구 이름)은 `PluginFilesTest`가 무료로 검사한다. 평가 실행 전에 먼저 돌린다.
 - 평가 실행: `.\scripts\eval.ps1`(비용 발생, 사용자 확인 후). CLI는 PATH에 없고 VS Code 확장 안에 있다: `$env:CLAUDE_BIN` = `C:\Users\WoonHo\.vscode\extensions\anthropic.claude-code-<버전>-win32-x64\resources\native-binary\claude.exe`.
 - 평가 정답(Sakila): 카테고리 매출 Sports 5,314.21 … Comedy 4,383.58 / 최다 대여 고객 148번 46회 / 대여료 0.99 영화 341편 / 대여 16,044건 / 매장 매출은 기준에 따라 1위가 바뀜(재고 매장·결제 직원 매장: 2번, 고객 등록 매장: 1번).

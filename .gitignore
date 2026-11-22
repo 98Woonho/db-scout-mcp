@@ -18,6 +18,10 @@ bin/
 application-local.yml
 *.log
 
+# npm 배포 때 만드는 파일(LICENSE는 release.yml이 복사)
+npm/*.tgz
+npm/LICENSE
+
 # claude plugin eval 실행 결과
 plugin/evals/results/
 

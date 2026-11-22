@@ -1,6 +1,9 @@
-# 태그(v*)를 push하면 jar를 만들어 GitHub Release에 올린다.
-# 플러그인 실행기(plugin/bin/Launch.java)는 플러그인 버전과 같은 태그의 Release에서 jar와 해시 파일을 받는다.
-# 시크릿 없이 저장소 기본 토큰(GITHUB_TOKEN)만 쓴다.
+# 태그(v*)를 push하면 다음을 자동으로 진행한다. 릴리스 방법은 docs/RELEASING.md 참고.
+#  1. jar를 만들어 GitHub Release에 올린다(jar + .sha256).
+#     플러그인 실행기(plugin/bin/Launch.java)와 npm 실행기(npm/launch.js)는 같은 버전의 Release에서 jar를 받는다.
+#  2. npm 실행기(npm/)를 npm에 배포한다. Trusted Publishing(OIDC)이라 저장소에 npm 토큰을 두지 않는다.
+#  3. MCP 공식 레지스트리를 갱신한다(server.json). GitHub OIDC 로그인이라 마찬가지로 시크릿 없음.
+# 단계마다 "이미 했으면 건너뛰기"가 있어서, 중간에 실패하면 Actions에서 Re-run 하면 이어서 진행된다.
 name: Release
 
 on:
@@ -9,6 +12,7 @@ on:
 
 permissions:
   contents: write # Release 만들기
+  id-token: write # npm Trusted Publishing, MCP 레지스트리 OIDC 로그인
 
 concurrency:
   group: release
@@ -17,7 +21,9 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.1
     steps:
       - uses: actions/checkout@v7
 
@@ -28,6 +34,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
+      # npm/package.json, server.json 버전은 빌드의 PluginFilesTest 가 gradle.properties 와 같은지 확인한다
       - name: 태그와 버전 일치 확인
         run: |
           GRADLE_VERSION=$(grep '^version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')
@@ -52,6 +59,103 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            build/libs/db-scout-mcp.jar build/libs/db-scout-mcp.jar.sha256 \
-            --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME 이 이미 있습니다. 건너뜁니다(이미 받은 사용자와 jar가 달라지지 않게 덮어쓰지 않음)."
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              build/libs/db-scout-mcp.jar build/libs/db-scout-mcp.jar.sha256 \
+              --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+          fi
+
+      # ───────── npm ─────────
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted Publishing 은 npm CLI 11.5.1 이상이 필요하다
+      - name: npm 11.5.1 이상 확인
+        run: |
+          npm install -g npm@^11.5.1
+          npm -v
+
+      # 방금 올린 Release 의 jar 로 npm 실행기가 실제로 서버를 띄우는지 확인한다(홈 폴더는 임시로)
+      - name: npm 실행기 확인 (Release에서 jar 받아 실행)
+        working-directory: npm
+        run: |
+          node --check launch.js
+          export HOME=$(mktemp -d)
+          cd "$(mktemp -d)"
+          npm pack "$GITHUB_WORKSPACE/npm" --silent
+          npm init -y >/dev/null
+          npm install ./db-scout-mcp-*.tgz --no-audit --no-fund --silent
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_connections","arguments":{}}}' \
+            | (cat; sleep 40) | timeout 120 npx --no-install db-scout-mcp > out.jsonl || true
+          cat out.jsonl | head -c 600; echo
+          grep -q '"id":2' out.jsonl && grep -q 'sakila' out.jsonl || { echo "::error::npm 실행기로 서버를 띄우지 못했습니다."; exit 1; }
+          test -f "$HOME/.db-scout/jars/${GITHUB_REF_NAME#v}/db-scout-mcp.jar"
+
+      # 이미 공개된 버전이면 건너뛴다 → 뒤 단계만 실패했을 때 Re-run 으로 이어서 진행 가능
+      - name: npm에 이미 있는 버전인지 확인
+        id: npm_check
+        working-directory: npm
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          echo "spec=$NAME@$VERSION" >> "$GITHUB_OUTPUT"
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "$NAME@$VERSION 은 이미 npm에 있습니다. 배포를 건너뜁니다."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: npm 배포 (Trusted Publishing)
+        if: steps.npm_check.outputs.published != 'true'
+        working-directory: npm
+        run: |
+          cp ../LICENSE LICENSE
+          npm publish --ignore-scripts
+
+      # npm 버전이 실제로 조회돼야 MCP 레지스트리 검증을 통과한다(반영까지 20초~2분, korea-transit 경험)
+      - name: npm 반영 기다리기
+        env:
+          SPEC: ${{ steps.npm_check.outputs.spec }}
+        run: |
+          for i in $(seq 1 30); do
+            if npm view "$SPEC" version >/dev/null 2>&1; then
+              echo "$SPEC 공개 확인"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$SPEC 이 5분 안에 npm 조회에 나타나지 않았습니다. 잠시 뒤 Re-run 하세요(이미 배포된 버전은 건너뜀). npmjs.com > Staged Packages 에 있다면 승인 후 Re-run 하세요."
+          exit 1
+
+      # ───────── MCP 공식 레지스트리 ─────────
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      # 공식 문서 방식: 고정 버전을 받아 Sigstore 서명을 검증한 뒤 사용
+      - name: mcp-publisher 설치 (서명 확인)
+        run: |
+          set -euo pipefail
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          base="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error -o "$archive" "$base/$archive"
+          curl --fail --location --silent --show-error -o "$archive.sigstore.json" "$base/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+
+      - name: MCP 레지스트리 등록
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish

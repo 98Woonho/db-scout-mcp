@@ -28,7 +28,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * 플러그인 파일(plugin/)을 검사한다. 평가(claude plugin eval)는 비용이 들어서, 형식 오류는 여기서 무료로 먼저 잡는다.
+ * 플러그인 파일(plugin/)과 배포 파일(npm/, server.json)을 검사한다.
+ * 평가(claude plugin eval)는 비용이 들어서, 형식 오류는 여기서 무료로 먼저 잡는다.
  */
 class PluginFilesTest {
 
@@ -85,6 +86,62 @@ class PluginFilesTest {
                     .containsEntry("DB_SCOUT_PASSWORD", "from-shell") // 셸 환경변수를 덮어쓰지 않는다
                     .doesNotContainKeys("DB_SCOUT_USERNAME", "DB_SCOUT_PLUGIN_URL", "DB_SCOUT_PLUGIN_PASSWORD");
         }
+    }
+
+    // ───────── npm 실행기(npm/)와 MCP 레지스트리(server.json) ─────────
+
+    @Test
+    void npmPackageAndRegistryMatchGradleVersion() throws IOException {
+        Properties gradle = new Properties();
+        try (var in = Files.newInputStream(Path.of("gradle.properties"))) {
+            gradle.load(in);
+        }
+        String version = gradle.getProperty("version");
+        Map<?, ?> pkg = new Yaml().load(Files.readString(Path.of("npm/package.json")));
+        Map<?, ?> server = new Yaml().load(Files.readString(Path.of("server.json")));
+        Map<?, ?> npm = (Map<?, ?>) ((List<?>) server.get("packages")).getFirst();
+
+        assertThat(pkg.get("version")).as("npm/package.json 의 version").isEqualTo(version);
+        assertThat(server.get("version")).as("server.json 의 version").isEqualTo(version);
+        assertThat(npm.get("version")).as("server.json packages[0].version").isEqualTo(version);
+        // 레지스트리는 npm 패키지의 mcpName 이 server.json 의 name 과 같은지로 소유를 확인한다
+        assertThat(pkg.get("mcpName")).isEqualTo(server.get("name"));
+        assertThat(npm.get("identifier")).isEqualTo(pkg.get("name"));
+        assertThat(npm.get("registryType")).isEqualTo("npm");
+        assertThat((String) server.get("description")).as("레지스트리 설명은 100자 이하").hasSizeLessThanOrEqualTo(100);
+    }
+
+    @Test
+    void registryEnvironmentVariablesExistInServerConfig() throws IOException {
+        Map<?, ?> server = new Yaml().load(Files.readString(Path.of("server.json")));
+        Map<?, ?> npm = (Map<?, ?>) ((List<?>) server.get("packages")).getFirst();
+        String config = Files.readString(Path.of("src/main/resources/application.yml"));
+
+        for (Object env : (List<?>) npm.get("environmentVariables")) {
+            String name = (String) ((Map<?, ?>) env).get("name");
+            assertThat(config).as("application.yml 이 " + name + " 을 읽어야 합니다").contains("${" + name + ":");
+        }
+    }
+
+    @Test
+    void launchersShareReleaseLocationAndCache() throws IOException {
+        String java = Files.readString(PLUGIN.resolve("bin/Launch.java"));
+        String js = Files.readString(Path.of("npm/launch.js"));
+
+        assertThat(constant(js, "REPO")).isEqualTo(constant(java, "REPO")).isEqualTo("98Woonho/db-scout-mcp");
+        assertThat(constant(js, "JAR")).isEqualTo(constant(java, "JAR")).isEqualTo("db-scout-mcp.jar");
+        // 같은 주소에서 받고, 같은 폴더(~/.db-scout/jars/<버전>/)에 보관한다
+        assertThat(java).contains("/releases/download/v", "\".db-scout\", \"jars\"");
+        assertThat(js).contains("/releases/download/v", "\".db-scout\", \"jars\"");
+        // 해시 파일로 확인한다
+        assertThat(java).contains("JAR + \".sha256\"", "SHA-256");
+        assertThat(js).contains("JAR + \".sha256\"", "createHash(\"sha256\")");
+    }
+
+    private static String constant(String source, String name) {
+        Matcher m = Pattern.compile("\\b" + name + "\\s*=\\s*\"([^\"]+)\"").matcher(source);
+        assertThat(m.find()).as(name + " 상수").isTrue();
+        return m.group(1);
     }
 
     // ───────── Skill ─────────

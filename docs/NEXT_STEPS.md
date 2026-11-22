@@ -67,8 +67,15 @@
 - 실행 기록(trace.jsonl)과 대조해 답변의 숫자가 모두 쿼리 결과에 있는 것을 확인했습니다(차이 46.98·437.57·6,586.53, 대여 기록 없는 결제 5건·9.95 포함).
 - Skill 없음 비교는 돌리지 않았습니다. 필요하면 `-NoSkills`(약 $0.15~0.3).
 
+### F. npm 배포와 MCP 공식 레지스트리 등록 (진행 중, 2026-11-22)
+레지스트리는 jar를 받지 않아서(npm, PyPI, NuGet, Cargo, Docker 이미지, MCPB만) npm 실행기로 등록합니다. korea-transit과 같은 방식입니다.
+- [x] `npm/launch.js`·`npm/package.json`, `server.json`, `scripts/set-version.mjs`, `release.yml`(npm 배포·레지스트리 단계), 테스트, 문서
+- [x] 로컬 확인: 저장소 안(로컬 jar), `npm pack` 설치본을 임시 홈에서 실행(Release v0.1.0 jar 받기·해시 `89de3238…` 일치, 두 번째는 받지 않음), 없는 버전 404, 잘못된 JAVA_HOME, `DB_SCOUT_URL`로 다른 DB
+- [ ] 사용자: npm 첫 배포(0.1.0, 직접) → npmjs.com에서 Trusted Publishing 설정 (docs/RELEASING.md "최초 1회 설정")
+- [ ] 사용자: `node scripts/set-version.mjs 0.1.1` → 커밋·태그 v0.1.1 push → Actions에서 Release·npm·레지스트리 단계 확인
+- [ ] 레지스트리에 `io.github.98Woonho/db-scout-mcp` 0.1.1이 보이는지 확인
+
 ### E. 나중에 검토할 것
-- MCP 공식 레지스트리 등록: npm·PyPI 패키지가 아니라 jar라서 등록 방식(MCPB 등)을 따로 조사해야 합니다.
 - 평가를 문제당 3회로 늘려 결과의 흔들림 보기(비용 약 3배).
 - Sakila처럼 유명하지 않은 DB로 평가: Claude가 구조를 미리 모르는 상황에서 Skill 효과를 보려면 필요합니다.
 

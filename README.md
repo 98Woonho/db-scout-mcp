@@ -178,7 +178,25 @@ Claude Code에서:
 
 ### B. MCP 서버만 연결 (다른 MCP 클라이언트)
 
-[Releases](https://github.com/98Woonho/db-scout-mcp/releases)에서 `db-scout-mcp.jar`를 받습니다.
+**npx로 실행 (Node.js 20 이상 필요)**: [npm 패키지](https://www.npmjs.com/package/db-scout-mcp)는 실행기입니다. 처음 실행할 때 같은 버전의 jar를 Release에서 받아 해시를 확인하고 `~/.db-scout/jars/<버전>/`에 보관합니다(플러그인과 같은 폴더를 함께 씀). [MCP 공식 레지스트리](https://registry.modelcontextprotocol.io)에도 `io.github.98Woonho/db-scout-mcp`로 등록됩니다.
+
+```json
+{
+  "mcpServers": {
+    "db-scout": {
+      "command": "npx",
+      "args": ["-y", "db-scout-mcp"],
+      "env": {
+        "DB_SCOUT_URL": "jdbc:postgresql://localhost:5432/shop",
+        "DB_SCOUT_USERNAME": "readonly",
+        "DB_SCOUT_PASSWORD": "<비밀번호>"
+      }
+    }
+  }
+}
+```
+
+**jar를 직접 실행**: [Releases](https://github.com/98Woonho/db-scout-mcp/releases)에서 `db-scout-mcp.jar`를 받습니다.
 
 ```powershell
 # Claude Code (접속 정보 없이 실행하면 내장 Sakila)
@@ -289,8 +307,11 @@ plugin/
   bin/Launch.java              실행기(jar 내려받기·해시 확인·실행)
   skills/                      db-explore, data-question
   evals/                       Skill 평가 문제 7개
+npm/launch.js                  npm 실행기(npx db-scout-mcp, 하는 일은 Launch.java와 같음)
+server.json                    MCP 공식 레지스트리 등록 정보
 scripts/eval.ps1               평가 실행
-.github/workflows/             ci.yml(3개 DB 테스트), release.yml(jar 배포)
+scripts/set-version.mjs        버전을 네 곳에 한 번에 맞춤
+.github/workflows/             ci.yml(3개 DB 테스트), release.yml(jar·npm·레지스트리 배포)
 ```
 
 ## License
