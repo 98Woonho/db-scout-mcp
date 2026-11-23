@@ -1,53 +1,140 @@
-﻿<#
+<#
 .SYNOPSIS
-  Skill 평가(claude plugin eval)를 실행한다. 실제 Claude가 돌아가므로 비용이 든다.
-
+  Reproducible Skill evaluation. Real runs incur Claude usage charges.
 .DESCRIPTION
-  - 실행 전에 서버 jar를 빌드한다. 저장소 안에서 실행되므로 플러그인 실행기가 로컬 빌드를 쓴다.
-  - 기본값: 문제당 1회, 비교 실행 없음, 비용 상한 3달러. DB는 내장 Sakila(설정 불필요).
-  - -NoSkills: Skill을 뺀 복사본(plugin-noskills/)으로 같은 문제를 푼다(Skill 효과 비교용).
-  - 나머지 인자는 claude plugin eval 에 그대로 넘긴다. 예) -Case top-renters
-  - Claude Code CLI 경로는 환경변수 CLAUDE_BIN 으로 바꿀 수 있다(기본: PATH 의 claude).
-
+  -DryRun prints the plan without builds, file writes or Claude calls.
+  Real runs preserve the plugin snapshot, input hashes and native results.
+  MaxCostUsd is a per-invocation stop threshold: a running case can exceed it.
 .EXAMPLE
-  .\scripts\eval.ps1                       # 전체 7문제, 각 1회
-  .\scripts\eval.ps1 --case store-revenue  # 한 문제만
-  .\scripts\eval.ps1 -NoSkills             # Skill 없이
+  .\scripts\eval.ps1 -Suite holdout -Runs 1 -DryRun
+  .\scripts\eval.ps1 -Suite holdout -Runs 1 -MaxCostUsd 1.5
+  .\scripts\eval.ps1 -Suite holdout -Runs 1 -MaxCostUsd 1.5 -NoSkills
 #>
+[CmdletBinding(PositionalBinding = $false)]
 param(
     [switch]$NoSkills,
+    [ValidateSet('regression', 'holdout')][string]$Suite = 'regression',
+    [ValidateRange(1, 10)][int]$Runs = 1,
+    [string]$Case = '*',
+    [ValidateRange(0.05, 100)][decimal]$MaxCostUsd = 3,
+    [string]$Model = 'opus',
+    [string]$JudgeModel = 'haiku',
+    [switch]$DryRun,
     [Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest
 )
 $ErrorActionPreference = 'Stop'
-$root = Split-Path -Parent $PSScriptRoot
-Set-Location $root
-
-& "$root\gradlew.bat" bootJar -q
-if ($LASTEXITCODE -ne 0) { throw '서버 빌드 실패' }
-
-$target = './plugin'
-if ($NoSkills) {
-    $copy = Join-Path $root 'plugin-noskills'
-    if (Test-Path $copy) { Remove-Item -Recurse -Force $copy }
-    Copy-Item -Recurse (Join-Path $root 'plugin') $copy
-    Remove-Item -Recurse -Force (Join-Path $copy 'skills')
-    if (Test-Path (Join-Path $copy 'evals\results')) { Remove-Item -Recurse -Force (Join-Path $copy 'evals\results') }
-    $target = './plugin-noskills'
+$root = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
+if ($Rest.Count -gt 0) {
+    if ($Rest.Count -ne 2 -or $Rest[0] -ne '--case' -or $Case -ne '*') {
+        throw 'Use -Suite, -Case, -Runs, -Model, -JudgeModel and -MaxCostUsd.'
+    }
+    $Case = $Rest[1]
 }
-
-$prefix = 'mcp__plugin_db-scout_db-scout__'
-$tools = 'list_connections', 'list_tables', 'describe_table', 'search_schema', 'find_join_path',
-         'sample_rows', 'profile_column', 'explain_query', 'run_query' | ForEach-Object { $prefix + $_ }
-
-# Windows PowerShell 5.1은 외부 프로그램이 표준에러에 쓴 안내 문구도 오류로 취급한다. 여기부터는 종료 코드로만 판단한다.
-$ErrorActionPreference = 'Continue'
+$evalDir = if ($Suite -eq 'holdout') { 'evals-holdout' } else { 'evals' }
+$cases = @(Get-ChildItem -LiteralPath (Join-Path $root "plugin/$evalDir") -Filter case.yaml -File -Recurse |
+    Where-Object { $_.FullName -notmatch '[\\/]results[\\/]' -and $_.Directory.Name -like $Case } | Sort-Object FullName)
+if ($cases.Count -eq 0) { throw "No cases match '$Case' in '$Suite'." }
+$graderCount = 0
+foreach ($item in $cases) {
+    $graderCount += @(Get-ChildItem -LiteralPath (Join-Path $item.Directory.FullName 'graders') -Filter '*.md' -File).Count
+}
+$condition = if ($NoSkills) { 'without-skills' } else { 'with-skills' }
+$plan = [ordered]@{
+    suite = $Suite; condition = $condition; cases = @($cases | ForEach-Object { $_.Directory.Name })
+    caseCount = $cases.Count; gradersPerRun = $graderCount; runsPerCase = $Runs
+    totalCaseRuns = $cases.Count * $Runs; model = $Model; judgeModel = $JudgeModel
+    costStopThresholdUsd = $MaxCostUsd; data = 'Bundled Sakila SQLite only'
+    ablation = 'none'; concurrency = 1; publish = $false
+}
+if ($DryRun) { $plan | ConvertTo-Json -Depth 8; return }
 $claude = if ($env:CLAUDE_BIN) { $env:CLAUDE_BIN } else { 'claude' }
-# --ablation none: '플러그인 전체 없음' 비교는 하지 않는다(Skill 효과는 -NoSkills 로 따로 비교)
-# --no-publish: 보고서를 claude.ai 에 올리지 않고 로컬(plugin/evals/results/)에만 둔다
-# --trust-plugin: 이 저장소에서 직접 만든 플러그인이므로 첫 실행 확인 창을 건너뛴다
-# --keep-temp: 실행 기록(trace.jsonl, 도구 호출 인자 포함)을 남겨 채점 결과를 사람이 다시 대조할 수 있게 한다
-$evalArgs = @('plugin', 'eval', $target, '--runs', '1', '--ablation', 'none', '--allow-real-servers',
-              '--no-publish', '--trust-plugin', '--keep-temp', '--max-cost-usd', '3', '--allow-tools') + $tools + $Rest
-Write-Host "> $claude plugin eval $target ... (도구 $($tools.Count)개 허용, 문제당 1회, 상한 `$3)"
-& $claude @evalArgs
-exit $LASTEXITCODE
+Get-Command $claude -ErrorAction Stop | Out-Null
+Push-Location $root
+$originalPath = $env:PATH
+$savedEnvironment = @{}
+try {
+    if ($env:JAVA_HOME) { $env:PATH = (Join-Path $env:JAVA_HOME 'bin') + ';' + $originalPath }
+    $configNames = @('SPRING_APPLICATION_JSON', 'SPRING_CONFIG_LOCATION', 'SPRING_CONFIG_ADDITIONAL_LOCATION',
+        'SPRING_CONFIG_IMPORT', 'SPRING_PROFILES_ACTIVE', 'SPRING_PROFILES_INCLUDE')
+    foreach ($entry in @(Get-ChildItem Env: | Where-Object { $_.Name -like 'DB_SCOUT_*' -or $_.Name -in $configNames })) {
+        $savedEnvironment[$entry.Name] = $entry.Value
+        Remove-Item -LiteralPath ("Env:" + $entry.Name)
+    }
+    & "$root/gradlew.bat" test --tests '*PluginFilesTest*' --tests '*EvaluationReferenceTest*' bootJar -q
+    if ($LASTEXITCODE -ne 0) { throw 'Free validation or build failed; Claude was not started.' }
+    $runId = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
+    $output = Join-Path $root "build/evaluations/$runId-$condition"
+    # Launch.java uses the local jar only when the snapshot's parent is the repo.
+    $snapshot = Join-Path $root "plugin-eval-$runId-$condition"
+    New-Item -ItemType Directory -Path $output, $snapshot | Out-Null
+    foreach ($name in @('.claude-plugin', '.mcp.json', 'bin', $evalDir)) {
+        Copy-Item -LiteralPath (Join-Path $root "plugin/$name") -Destination $snapshot -Recurse
+    }
+    if (-not $NoSkills) { Copy-Item -LiteralPath (Join-Path $root 'plugin/skills') -Destination $snapshot -Recurse }
+    # Pin the MCP process to the tested jar, even if the CLI copies the plugin.
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    $mcpConfig = @{ mcpServers = @{ 'db-scout' = @{
+        command = (Get-Command java.exe -ErrorAction Stop).Source
+        args = @('-jar', (Join-Path $root 'build/libs/db-scout-mcp.jar'))
+        env = @{ DB_SCOUT_URL = '' }
+    } } }
+    $snapshotMcp = Join-Path $snapshot '.mcp.json'
+    [IO.File]::WriteAllText($snapshotMcp, ($mcpConfig | ConvertTo-Json -Depth 8), $utf8)
+    $hashes = [ordered]@{}
+    $inputs = @('scripts/eval.ps1', 'gradle.properties', 'docs/evaluation/holdout-v1.json')
+    $inputs += @(Get-ChildItem -LiteralPath (Join-Path $root 'plugin') -File -Recurse |
+        Where-Object { $_.FullName -notmatch '[\\/]results[\\/]' } |
+        ForEach-Object { $_.FullName.Substring($root.Length + 1).Replace('\', '/') })
+    foreach ($relative in @($inputs | Sort-Object -Unique)) {
+        $hashes[$relative] = (Get-FileHash -LiteralPath (Join-Path $root $relative) -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    $ErrorActionPreference = 'Continue'
+    $cliVersion = (& $claude --version 2>$null | Out-String).Trim()
+    $versionExit = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($versionExit -ne 0) { throw 'Cannot read Claude CLI version.' }
+    $manifest = [ordered]@{
+        schemaVersion = 1; runId = $runId; startedAtUtc = [DateTime]::UtcNow.ToString('o'); status = 'running'
+        plan = $plan; sourceCommit = (& git rev-parse HEAD | Out-String).Trim()
+        dirtyWorkingTree = [bool](& git status --porcelain --untracked-files=all)
+        inputSha256 = $hashes; cliVersion = $cliVersion
+        jarSha256 = (Get-FileHash -LiteralPath "$root/build/libs/db-scout-mcp.jar" -Algorithm SHA256).Hash.ToLowerInvariant()
+        evaluatedMcpConfigSha256 = (Get-FileHash -LiteralPath $snapshotMcp -Algorithm SHA256).Hash.ToLowerInvariant()
+        pluginSnapshot = $snapshot; nativeResult = 'aggregate-result.json'
+        actualModel = $null; toolCalls = $null; tokens = $null
+        measurementNote = 'Unknown metrics stay null. Inspect native results and traces; do not infer zero.'
+    }
+    $manifestPath = Join-Path $output 'run-manifest.json'
+    [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 12), $utf8)
+    $prefix = 'mcp__plugin_db-scout_db-scout__'
+    $tools = @('list_connections', 'list_tables', 'describe_table', 'search_schema', 'find_join_path',
+        'sample_rows', 'profile_column', 'explain_query', 'run_query') | ForEach-Object { $prefix + $_ }
+    $budget = $MaxCostUsd.ToString([Globalization.CultureInfo]::InvariantCulture)
+    $evalArgs = @('plugin', 'eval', $snapshot, '--eval-dir', $evalDir, '--case', $Case,
+        '--runs', "$Runs", '--model', $Model, '--judge-model', $JudgeModel,
+        '--ablation', 'none', '--concurrency', '1', '--allow-real-servers',
+        '--no-publish', '--trust-plugin', '--keep-temp', '--max-cost-usd', $budget,
+        '--output-dir', $output, '--allow-tools') + $tools
+    Write-Host "Evaluating $($cases.Count) cases x $Runs, $condition. Stop threshold USD $budget; a running case may exceed it."
+    Write-Host "Artifacts: $output"
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $claude @evalArgs
+        $evalExit = $LASTEXITCODE
+    } catch {
+        $manifest.status = 'launch-error'
+        $manifest['finishedAtUtc'] = [DateTime]::UtcNow.ToString('o')
+        [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 12), $utf8)
+        throw
+    }
+    $ErrorActionPreference = 'Stop'
+    $manifest.status = if ($evalExit -eq 0) { 'completed' } else { 'failed-or-partial' }
+    $manifest['exitCode'] = $evalExit
+    $manifest['finishedAtUtc'] = [DateTime]::UtcNow.ToString('o')
+    [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 12), $utf8)
+    if ($evalExit -ne 0) { throw "Evaluation exited $evalExit. Preserve partial artifacts at $output." }
+} finally {
+    foreach ($name in $savedEnvironment.Keys) { Set-Item -LiteralPath ("Env:" + $name) -Value $savedEnvironment[$name] }
+    $env:PATH = $originalPath
+    Pop-Location
+}

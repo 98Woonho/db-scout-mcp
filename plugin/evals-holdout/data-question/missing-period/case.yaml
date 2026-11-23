@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: missing-period
+expected_outcome: |
+  2099-01-01 이상 2100-01-01 미만의 payment는 0건. 실적 데이터가 없다고 설명하고 예측이나 원인을 만들지 않는다.
+

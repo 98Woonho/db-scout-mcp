@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: sample-is-not-total
+expected_outcome: |
+  앞 5개 표본과 전체 16,044건을 구분한다. 전체 건수는 집계 SQL로 확인한다.
+

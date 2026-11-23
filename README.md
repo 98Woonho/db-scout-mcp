@@ -11,7 +11,7 @@ MCP(Model Context Protocol)는 Claude 같은 AI가 외부 도구를 쓰는 표�
 - **쓰기 쿼리 차단**, 조회 **행 수·실행 시간 제한**, **개인정보 컬럼 가리기**
 - SQLite, MySQL, PostgreSQL 지원(JDBC: 자바 프로그램이 DB에 접속하는 표준 방법)
 - 설정 없이 실행하면 내장된 공개 샘플 DB **Sakila**(DVD 대여점 데이터)로 바로 써 볼 수 있습니다.
-- 서버는 LLM을 부르지 않습니다. DB만 조회하므로 **운영 비용은 0원**입니다.
+- 서버는 LLM을 부르지 않아 **서버 자체의 LLM 호출 비용이 없습니다.** 사용자 측 Claude 사용량과 DB·실행 환경의 비용은 별도입니다.
 
 ## 작동 방식
 
@@ -86,6 +86,8 @@ Claude Code 플러그인으로 설치하면 도구와 함께 Skill 2개가 들�
 
 > 같은 도구로 Skill만 빼고 비교했더니 **30/30(Skill 있음) 대 26/30(Skill 없음)**. 안전 항목(가리기, 쓰기 차단, 대량 출력)은 서버가 강제하므로 Skill 유무와 상관없이 모두 통과했습니다.
 
+위 수치는 2026-11-17의 **7개 질문·30개 채점 항목·질문당 1회** 결과입니다. 이후 기준을 보강한 기존 세트는 31항목입니다. 과거 점수와 새 기준을 섞지 않으며, 추가 고정 검증 5문제는 아직 에이전트 평가 전입니다. 조건·한계·대표 실패 사례와 재현 방법은 [평가 보고서](docs/EVALUATION.md)에 정리했습니다.
+
 ### 세 가지 방법으로 확인합니다
 
 | 방법 | 확인하는 것 | 실행 | 비용 |
@@ -149,13 +151,16 @@ Skill이 없을 때 놓친 것: 조인 경로를 도구로 확인하지 않음, 
 
 ```powershell
 .\scripts\eval.ps1                       # 전체 7문제, 각 1회
-.\scripts\eval.ps1 --case store-revenue  # 한 문제만
+.\scripts\eval.ps1 -Case store-revenue   # 한 문제만
 .\scripts\eval.ps1 -NoSkills             # Skill 없이(비교용)
+.\scripts\eval.ps1 -Suite holdout -DryRun # 추가 5문제의 무료 실행 계획
 ```
+
+`-Runs`·`-Model`·`-JudgeModel`로 양쪽 조건을 맞추고, `-MaxCostUsd`로 명령별 중단 기준을 지정할 수 있습니다. 진행 중인 과제는 중단 기준을 초과할 수 있습니다. 실제 실행은 무료 형식·정답 검사를 먼저 수행하고, 입력 해시·로컬 jar·실행 조건·원본 결과를 보존합니다.
 
 ## 설계 원칙
 
-- **LLM 비용 0원**: 서버는 DB만 조회합니다. 판단은 사용자의 Claude가 하므로 서버 운영 비용이 없고, 테스트·CI에도 LLM이 필요 없습니다.
+- **서버에서 LLM을 호출하지 않음**: DB 조회와 안전장치는 일반 코드로 처리합니다. 단위 테스트·CI에는 LLM이 필요 없고, 실제 에이전트 평가는 사용자 측 Claude 비용이 듭니다.
 - **계산은 도구에, 판단은 Skill에**: 조인 경로 찾기, 행 수 제한, 가리기처럼 답이 하나인 일은 서버가 하고 테스트로 검증합니다. "어떤 테이블부터 볼지", "결과를 어떻게 설명할지"는 Skill 문서에 둡니다.
 - **모르면 막는다**: 분석하지 못한 SQL은 실행하지 않고, 결과 컬럼의 출처를 확정하지 못하면 개인정보를 건드린 쿼리의 모든 컬럼을 가립니다.
 
@@ -306,10 +311,13 @@ plugin/
   .claude-plugin/plugin.json   플러그인 정보와 설정 항목
   bin/Launch.java              실행기(jar 내려받기·해시 확인·실행)
   skills/                      db-explore, data-question
-  evals/                       Skill 평가 문제 7개
+  evals/                       기존 Skill 평가 문제 7개(현재 31항목)
+  evals-holdout/               추가 고정 검증 문제 5개(16항목)
 npm/launch.js                  npm 실행기(npx db-scout-mcp, 하는 일은 Launch.java와 같음)
 server.json                    MCP 공식 레지스트리 등록 정보
-scripts/eval.ps1               평가 실행
+docs/EVALUATION.md             평가 보고서·한계·재현 방법
+docs/evaluation/               정답 SQL과 대표 실패 사례
+scripts/eval.ps1               반복·조건 고정·기록 보존을 지원하는 평가 실행
 scripts/set-version.mjs        버전을 네 곳에 한 번에 맞춤
 .github/workflows/             ci.yml(3개 DB 테스트), release.yml(jar·npm·레지스트리 배포)
 ```

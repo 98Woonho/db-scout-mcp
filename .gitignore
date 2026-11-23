@@ -28,3 +28,7 @@ plugin/evals/results/
 
 # Skill 효과 비교용 복사본(scripts/eval.ps1 -NoSkills)
 plugin-noskills/
+
+# 평가 입력 스냅샷. 결과와 실행 조건은 build/evaluations/에 보존한다.
+plugin-eval-*/
+plugin/evals-holdout/results/

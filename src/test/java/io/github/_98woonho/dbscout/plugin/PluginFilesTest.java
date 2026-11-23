@@ -8,6 +8,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -164,12 +165,15 @@ class PluginFilesTest {
     // ───────── 평가 문제 ─────────
 
     static Stream<Arguments> evalFiles() throws IOException {
-        try (Stream<Path> s = Files.walk(PLUGIN.resolve("evals"))) {
-            return s.filter(Files::isRegularFile)
-                    .filter(p -> !p.toString().contains("results"))
-                    .map(p -> (Arguments) Arguments.argumentSet(PLUGIN.resolve("evals").relativize(p).toString(), p))
-                    .toList().stream();
+        List<Arguments> files = new ArrayList<>();
+        for (String directory : List.of("evals", "evals-holdout")) {
+            try (Stream<Path> s = Files.walk(PLUGIN.resolve(directory))) {
+                s.filter(Files::isRegularFile)
+                        .filter(p -> !p.toString().contains("results"))
+                        .forEach(p -> files.add(Arguments.argumentSet(PLUGIN.relativize(p).toString(), p)));
+            }
         }
+        return files.stream();
     }
 
     @ParameterizedTest

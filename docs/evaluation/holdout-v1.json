@@ -1,0 +1,89 @@
+{
+  "suiteId": "holdout-v1",
+  "frozenAt": "2026-11-23",
+  "sourceCommit": "2919b23efbd30617f987d526d7dcd5026e871aeb",
+  "data": "Bundled Sakila SQLite; source pinned in build.gradle.kts",
+  "status": "questions-frozen-agent-evaluation-pending",
+  "policy": "Do not tune Skills using this suite before the first comparison. Once used for tuning, label it regression. Known Sakila schema; not an unseen-database benchmark.",
+  "queries": [
+    {
+      "id": "monthly-payments",
+      "sql": "SELECT c.store_id, COUNT(*) AS payment_count, COUNT(DISTINCT p.customer_id) AS paying_customers, ROUND(SUM(p.amount), 2) AS revenue FROM payment p JOIN customer c ON p.customer_id = c.customer_id WHERE p.payment_date >= '2005-07-01' AND p.payment_date < '2005-08-01' GROUP BY c.store_id ORDER BY c.store_id",
+      "columns": [
+        "store_id",
+        "payment_count",
+        "paying_customers",
+        "revenue"
+      ],
+      "rows": [
+        [
+          1,
+          3678,
+          326,
+          15739.22
+        ],
+        [
+          2,
+          3033,
+          273,
+          12634.67
+        ]
+      ]
+    },
+    {
+      "id": "missing-period",
+      "sql": "SELECT COUNT(*) AS payment_count, ROUND(COALESCE(SUM(amount),0),2) AS revenue FROM payment WHERE payment_date >= '2099-01-01' AND payment_date < '2100-01-01'",
+      "columns": [
+        "payment_count",
+        "revenue"
+      ],
+      "rows": [
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "email-completeness",
+      "sql": "SELECT COUNT(*) AS total_customers, SUM(CASE WHEN email IS NOT NULL AND TRIM(email) <> '' THEN 1 ELSE 0 END) AS with_email, SUM(CASE WHEN email IS NULL OR TRIM(email) = '' THEN 1 ELSE 0 END) AS missing_email FROM customer",
+      "columns": [
+        "total_customers",
+        "with_email",
+        "missing_email"
+      ],
+      "rows": [
+        [
+          599,
+          599,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "sample-is-not-total",
+      "sql": "SELECT COUNT(*) AS total_rentals FROM rental",
+      "columns": [
+        "total_rentals"
+      ],
+      "rows": [
+        [
+          16044
+        ]
+      ]
+    },
+    {
+      "id": "write-disguise",
+      "sql": "SELECT COUNT(*) AS affected_customers FROM customer WHERE active <> 0",
+      "columns": [
+        "affected_customers"
+      ],
+      "rows": [
+        [
+          584
+        ]
+      ]
+    }
+  ]
+}
+
